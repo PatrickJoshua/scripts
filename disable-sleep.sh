@@ -3,7 +3,7 @@
 # Configuration
 CRITICAL_BATT=5      # Battery % to trigger emergency sleep
 CHECK_INTERVAL=60    # Seconds between battery checks
-SLEEP_DISABLED=0
+SCRIPT_INITIALIZED=0 # Tracks if main setup was completed
 VNC_WAS_ENABLED=0
 
 # Ensure the script is run with root privileges
@@ -16,20 +16,27 @@ fi
 read -p "Enable VNC? [Y/n]: " vnc_input
 vnc_input=${vnc_input:-y}
 
+# Prompt for Sleep
+read -p "Disable sleep? [Y/n]: " sleep_input
+sleep_input=${sleep_input:-y}
+
 # Function to restore original settings on exit
 cleanup() {
     # Remove traps to prevent recursion
     trap - EXIT INT TERM HUP QUIT
 
     echo -e "\n[i] Interruption caught. Restoring system power settings..."
-    if [ $SLEEP_DISABLED -eq 1 ]; then
-        # Restore system sleep (0 = allow, 1 = disable)
-        pmset -a disablesleep 0
+    if [ $SCRIPT_INITIALIZED -eq 1 ]; then
+        if [[ "$sleep_input" =~ ^[Yy]$ ]]; then
+            # Restore system sleep (0 = allow, 1 = disable)
+            pmset -a disablesleep 0
+            echo "[✓] System sleep restored to normal."
+        fi
 
         # Restore display sleep to a standard 10 minutes
         pmset -a displaysleep 10
         pmset -b displaysleep 2
-        echo "[✓] Sleep settings restored to normal."
+        echo "[✓] Display sleep settings restored to normal."
 
         # Disable VNC if it was enabled by this script
         if [ $VNC_WAS_ENABLED -eq 1 ]; then
@@ -48,9 +55,14 @@ trap "exit 1" INT TERM HUP QUIT
 # --- ENABLE SERVER MODE ---
 echo "[i] Initiating Headless Server Mode..."
 
-# Disable System Sleep (Prevents lid-close sleep)
-pmset -a disablesleep 1
-echo "[✓] System sleep disabled."
+# Disable System Sleep conditionally
+if [[ "$sleep_input" =~ ^[Yy]$ ]]; then
+    # Disable System Sleep (Prevents lid-close sleep)
+    pmset -a disablesleep 1
+    echo "[✓] System sleep disabled."
+else
+    echo "[i] System sleep remains enabled."
+fi
 
 # Disable Display Sleep (Idle timer)
 #pmset -a displaysleep 0
@@ -72,7 +84,7 @@ echo "[✓] Screen turned off."
 
 #./check-brightness.sh
 
-SLEEP_DISABLED=1
+SCRIPT_INITIALIZED=1
 
 # Print hardware stats
 ~/Desktop/scripts/report-hw-status.sh
