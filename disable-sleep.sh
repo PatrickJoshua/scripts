@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Configuration
+CRITICAL_BATT=5      # Battery % to trigger emergency sleep
+CHECK_INTERVAL=60    # Seconds between battery checks
+SLEEP_DISABLED=0
+VNC_WAS_ENABLED=0
+
+# Ensure the script is run with root privileges
+if [ "$EUID" -ne 0 ]; then
+  echo "Error: This script requires root privileges (sudo)."
+  exit 1
+fi
+
+# Prompt for VNC
+read -p "Enable VNC? [Y/n]: " vnc_input
+vnc_input=${vnc_input:-y}
+
+# Function to restore original settings on exit
+cleanup() {
+    # Remove traps to prevent recursion
+    trap - EXIT INT TERM HUP QUIT
+
+    echo -e "\n[i] Interruption caught. Restoring system power settings..."
+    if [ $SLEEP_DISABLED -eq 1 ]; then
+        # Restore system sleep (0 = allow, 1 = disable)
+        pmset -a disablesleep 0
+
+        # Restore display sleep to a standard 10 minutes
+        pmset -a displaysleep 10
+        pmset -b displaysleep 2
+        echo "[✓] Sleep settings restored to normal."
+
+        # Disable VNC if it was enabled by this script
+        if [ $VNC_WAS_ENABLED -eq 1 ]; then
+            /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -configure -access -off
+            echo "[✓] VNC disabled."
+        fi
+    fi
+}
+
+# Trap signals for clean exit
+# We trap EXIT to ensure cleanup runs on any exit.
+# We trap specific signals to trigger an exit (which then triggers the EXIT trap).
+trap cleanup EXIT
+trap "exit 1" INT TERM HUP QUIT
+
+# --- ENABLE SERVER MODE ---
+echo "[i] Initiating Headless Server Mode..."
+
+# Disable System Sleep (Prevents lid-close sleep)
+pmset -a disablesleep 1
+echo "[✓] System sleep disabled."
+
+# Disable Display Sleep (Idle timer)
+#pmset -a displaysleep 0
+pmset -a displaysleep 1
+echo "[✓] Display idle sleep set to 1 minute."
+
+# Enable VNC conditionally
+if [[ "$vnc_input" =~ ^[Yy]$ ]]; then
+    /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -restart -agent -privs -all
+    VNC_WAS_ENABLED=1
+    echo "[✓] VNC enabled."
+else
+    echo "[i] VNC remains disabled."
+fi
+
+# Sleep display now
+pmset displaysleepnow
+echo "[✓] Screen turned off."
+
+#./check-brightness.sh
+
+SLEEP_DISABLED=1
+
+# Print hardware stats
+~/Desktop/scripts/report-hw-status.sh
+
+echo "[i] Monitoring energy... (Ctrl+C to stop)"
+echo "--------------------------------------------------------------------------------"
+
+PREV_BATT_PCT=""
+PREV_POWER_SOURCE=""
+
+while true; do
+    # 1. Gather Basic Info
+    POWER_SOURCE=$(pmset -g batt | head -n 1 | cut -d\' -f2)
+    BATT_PCT=$(pmset -g batt | grep -Eo '[0-9]+%' | head -n 1 | tr -d '%')
+    
+    # 2. Only print if the Power Source or Battery % has changed
+    if [ "$POWER_SOURCE" != "$PREV_POWER_SOURCE" ] || [ "$BATT_PCT" != "$PREV_BATT_PCT" ]; then
+        
+        # Calculate Battery Draw (Watts) via ioreg
+        BATT_DRAW=$(ioreg -rw0 -c AppleSmartBattery | awk '/"Voltage" =/ {v=$3} /"Amperage" =/ {a=$3} END { if(a>2^63) a-=2^64; w=(v*a/1000000); printf "%.2fW\n", w}')
+        
+        # Calculate Total System Power Consumption via powermetrics (100ms sample)
+        SYS_POWER=$(powermetrics -n 1 -i 100 --samplers smc,cpu_power 2>/dev/null | grep -iE "Combined Power|System Total power" | head -n 1 | awk '{ if ($0 ~ /mW/) { printf "%.2fW", $(NF-1)/1000 } else { print $(NF-1) "W" } }')
+        
+        TIME=$(date "+%Y-%m-%d %H:%M:%S")
+        echo "[$TIME] Update -> Batt: ${BATT_PCT:-N/A}% | Source: $POWER_SOURCE | Batt Draw: $BATT_DRAW | Sys Power: ${SYS_POWER:-Unknown}"
+        
+        PREV_POWER_SOURCE="$POWER_SOURCE"
+        PREV_BATT_PCT="$BATT_PCT"
+    fi
+
+    # 3. Handle Critical Battery Case
+    if [ "$POWER_SOURCE" = "Battery Power" ] && [ "$BATT_PCT" -le "$CRITICAL_BATT" ]; then
+        echo -e "\n[!] CRITICAL BATTERY (${BATT_PCT}%). Re-enabling sleep to prevent shutdown."
+        exit 0 
+    fi
+    
+    # 4. Sleep and Wait
+    sleep $CHECK_INTERVAL &
+    wait $!
+done

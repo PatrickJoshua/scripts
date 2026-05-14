@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Capture original states to revert later
+ORIG_VRAM_LIMIT=$(sysctl -n iogpu.wired_limit_mb 2>/dev/null || echo "0")
+
+cleanup() {
+    echo -e "\n--- Reverting system settings ---"
+    
+    # Revert VRAM limit
+    echo "Restoring VRAM limit to $ORIG_VRAM_LIMIT..."
+    sudo sysctl iogpu.wired_limit_mb=$ORIG_VRAM_LIMIT
+    
+    # Re-enable Spotlight Search Indexing
+    echo "Re-enabling Spotlight..."
+    sudo mdutil -a -i on
+    
+    # Re-enable Services
+    echo "Restarting network services (VNC, AFP, SMB)..."
+    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null
+    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist 2>/dev/null
+    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
+    
+    echo "Cleanup complete. Note: GUI apps were not restarted."
+}
+
+# Trap script termination (Ctrl+C, kill, or natural exit)
+trap cleanup EXIT SIGINT SIGTERM
+
+# --- Apply Optimizations ---
+
+# Set VRAM limits to 14GB (14336 MB)
+sudo sysctl iogpu.wired_limit_mb=14336
+
+# Disable Spotlight Search Indexing
+sudo mdutil -a -i off
+
+# Disable Services (VNC, AFP, SMB)
+sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist
+sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist
+
+# Kill all GUI apps (Note: These cannot be automatically reverted)
+osascript -e 'tell application "System Events" to set quitapps to name of every application process whose visible is true and name is not "Terminal"' -e 'repeat with appname in quitapps' -e 'quit application appname' -e 'end repeat'
+
+# Relaunch Finder and Dock to clear their cache
+killall Finder
+killall Dock
+
+# Purge memory
+sudo purge
+
+echo "AI Server Mode active. Press Ctrl+C to exit and revert settings."
+
+# --- Launch llama.cpp ---
+# Replace the line below with your actual launch command, e.g.:
+# ./llama-server -m models/7b.gguf ...
+#
+# If you run the server here, the script will stay active and revert 
+# settings only when the server stops or you hit Ctrl+C.
+# For now, we use 'sleep infinity' to keep the session alive.
+sleep infinity
