@@ -2,7 +2,7 @@
 
 # Configuration
 CRITICAL_BATT=5      # Battery % to trigger emergency sleep
-CHECK_INTERVAL=60    # Seconds between battery checks
+CHECK_INTERVAL=180   # Seconds between battery checks
 SCRIPT_INITIALIZED=0 # Tracks if main setup was completed
 VNC_WAS_ENABLED=0
 
@@ -44,6 +44,7 @@ cleanup() {
             echo "[✓] VNC disabled."
         fi
     fi
+    echo "(Graceful script exit)"
 }
 
 # Trap signals for clean exit
@@ -122,7 +123,9 @@ while true; do
         exit 0 
     fi
     
-    # 4. Sleep and Wait
-    sleep $CHECK_INTERVAL &
-    wait $!
+    # 4. Sleep and Wait (or manual trigger)
+    if read -s -t "$CHECK_INTERVAL" -n 1; then
+        echo -e "\n[i] Manual trigger: Reporting hardware status..."
+        ~/Desktop/scripts/report-hw-status.sh
+    fi
 done
