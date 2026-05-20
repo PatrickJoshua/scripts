@@ -73,7 +73,13 @@ cleanup() {
     # Remove traps to prevent recursion
     trap - EXIT INT TERM HUP QUIT
 
-    if [ -n "$WATCHDOG_PID" ]; then
+    local IS_WATCHDOG=0
+    if [ "$BASHPID" != "$MAIN_PID" ]; then
+        IS_WATCHDOG=1
+    fi
+
+    # If I am the main script, kill the watchdog so it doesn't also run cleanup
+    if [ $IS_WATCHDOG -eq 0 ] && [ -n "$WATCHDOG_PID" ]; then
         kill $WATCHDOG_PID 2>/dev/null || true
     fi
     
@@ -104,11 +110,14 @@ cleanup() {
     fi
     log_status "(Graceful script exit)"
     
-    # If cleanup is running inside the watchdog subshell, kill the stuck parent script
-    if [ "$BASHPID" != "$MAIN_PID" ]; then
+    if [ $IS_WATCHDOG -eq 1 ]; then
+        # We are the watchdog. Kill the stuck main script.
         kill -9 $MAIN_PID 2>/dev/null || true
+        exit 0
+    else
+        # We are the main script.
+        exit 0
     fi
-    exit 0
 }
 
 # Trap signals for clean exit
@@ -161,8 +170,13 @@ PREV_POWER_SOURCE=""
 if [ $NON_INTERACTIVE -eq 1 ]; then
     (
         while true; do
-            # The reverse tunnel port is opened by the SSH connection.
-            # If the connection drops, sshd immediately closes this listening port.
+            # 1. Did the main script die unexpectedly (e.g., kill -9)?
+            if ! kill -0 $MAIN_PID 2>/dev/null; then
+                log_status "\n[!] Main process died unexpectedly. Watchdog taking over cleanup."
+                cleanup
+            fi
+
+            # 2. Did the reverse tunnel drop? (SSH disconnected)
             if ! nc -z localhost $NOTIFY_PORT >/dev/null 2>&1; then
                 log_status "\n[!] SSH tunnel dropped. Watchdog taking over cleanup."
                 cleanup
