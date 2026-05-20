@@ -63,6 +63,10 @@ cleanup() {
     # Remove traps to prevent recursion
     trap - EXIT INT TERM HUP QUIT
 
+    if [ -n "$WATCHDOG_PID" ]; then
+        kill $WATCHDOG_PID 2>/dev/null || true
+    fi
+
     echo -e "\n[i] Interruption caught. Restoring system power settings..."
     if [ $SCRIPT_INITIALIZED -eq 1 ]; then
         if [[ "$sleep_input" =~ ^[Yy]$ ]]; then
@@ -134,13 +138,24 @@ echo "--------------------------------------------------------------------------
 PREV_BATT_PCT=""
 PREV_POWER_SOURCE=""
 
-while true; do
-    # 0. Check if we have been orphaned (parent sudo/sshd died)
-    if ! kill -0 $PPID 2>/dev/null; then
-        echo -e "\n[!] Parent process died. Exiting to trigger cleanup."
-        exit 1
-    fi
+# Start a watchdog to detect if the SSH connection dropped
+if [ $NON_INTERACTIVE -eq 1 ]; then
+    (
+        while true; do
+            # The reverse tunnel port is opened by the SSH connection.
+            # If the connection drops, sshd immediately closes this listening port.
+            if ! nc -z localhost $NOTIFY_PORT >/dev/null 2>&1; then
+                echo -e "\n[!] SSH tunnel dropped. Exiting to trigger cleanup."
+                kill -TERM $$
+                exit 0
+            fi
+            sleep 5
+        done
+    ) &
+    WATCHDOG_PID=$!
+fi
 
+while true; do
     # 1. Gather Basic Info
     POWER_SOURCE=$(pmset -g batt | head -n 1 | cut -d\' -f2)
     BATT_PCT=$(pmset -g batt | grep -Eo '[0-9]+%' | head -n 1 | tr -d '%')
