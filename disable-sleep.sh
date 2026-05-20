@@ -66,27 +66,39 @@ cleanup() {
     if [ -n "$WATCHDOG_PID" ]; then
         kill $WATCHDOG_PID 2>/dev/null || true
     fi
+    
+    # Kill the background sleep if it is running so it doesn't linger
+    if [ -n "$SLEEP_PID" ]; then
+        kill $SLEEP_PID 2>/dev/null || true
+    fi
 
-    echo -e "\n[i] Interruption caught. Restoring system power settings..."
+    # Safe logging helper that writes to file and attempts to write to stdout,
+    # ignoring I/O errors if the terminal is dead.
+    log_cleanup() {
+        echo -e "$1" >> /tmp/disable-sleep.log
+        echo -e "$1" 2>/dev/null || true
+    }
+
+    log_cleanup "\n[i] Interruption caught. Restoring system power settings..."
     if [ $SCRIPT_INITIALIZED -eq 1 ]; then
         if [[ "$sleep_input" =~ ^[Yy]$ ]]; then
             # Restore system sleep (0 = allow, 1 = disable)
-            pmset -a disablesleep 0
-            echo "[✓] System sleep restored to normal."
+            pmset -a disablesleep 0 >> /tmp/disable-sleep.log 2>&1
+            log_cleanup "[✓] System sleep restored to normal."
         fi
 
         # Restore display sleep to a standard 10 minutes
-        pmset -a displaysleep 10
-        pmset -b displaysleep 2
-        echo "[✓] Display sleep settings restored to normal."
+        pmset -a displaysleep 10 >> /tmp/disable-sleep.log 2>&1
+        pmset -b displaysleep 2 >> /tmp/disable-sleep.log 2>&1
+        log_cleanup "[✓] Display sleep settings restored to normal."
 
         # Disable VNC if it was enabled by this script
         if [ $VNC_WAS_ENABLED -eq 1 ]; then
-            /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -configure -access -off
-            echo "[✓] VNC disabled."
+            /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -configure -access -off >> /tmp/disable-sleep.log 2>&1
+            log_cleanup "[✓] VNC disabled."
         fi
     fi
-    echo "(Graceful script exit)"
+    log_cleanup "(Graceful script exit)"
 }
 
 # Trap signals for clean exit
@@ -193,7 +205,9 @@ while true; do
     # 4. Sleep and Wait (or manual trigger)
     if [ $NON_INTERACTIVE -eq 1 ]; then
         sleep "$CHECK_INTERVAL" &
-        wait $!
+        SLEEP_PID=$!
+        wait $SLEEP_PID
+        SLEEP_PID=""
     else
         if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
             echo -e "\n[i] Manual trigger: Reporting hardware status..."
