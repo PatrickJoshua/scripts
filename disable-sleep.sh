@@ -21,13 +21,33 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Prompt for VNC
-read -p "Enable VNC? [y/N]: " vnc_input < /dev/tty
-vnc_input=${vnc_input:-n}
+# Parse arguments
+SKIP_PROMPTS=0
+while getopts "x" opt; do
+  case $opt in
+    x)
+      SKIP_PROMPTS=1
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
 
-# Prompt for Sleep
-read -p "Disable sleep? [y/N]: " sleep_input < /dev/tty
-sleep_input=${sleep_input:-n}
+if [ $SKIP_PROMPTS -eq 1 ]; then
+    vnc_input="n"
+    sleep_input="n"
+    echo "[i] Skipping prompts (-x), using defaults (VNC: n, Sleep: n)"
+else
+    # Prompt for VNC
+    read -p "Enable VNC? [y/N]: " vnc_input < /dev/tty
+    vnc_input=${vnc_input:-n}
+
+    # Prompt for Sleep
+    read -p "Disable sleep? [y/N]: " sleep_input < /dev/tty
+    sleep_input=${sleep_input:-n}
+fi
 
 # Function to restore original settings on exit
 cleanup() {

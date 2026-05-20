@@ -4,6 +4,20 @@
 NOTIFY_PORT=10000
 HOST="GLMACM1492118.local"
 
+# Parse arguments
+SCRIPT_ARGS=""
+while getopts "x" opt; do
+  case $opt in
+    x)
+      SCRIPT_ARGS="-x"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
 # Ensure port is free before starting
 fuser -k ${NOTIFY_PORT}/tcp 2>/dev/null
 pkill -f "ncat -l -p $NOTIFY_PORT" 2>/dev/null
@@ -37,4 +51,4 @@ fi
 echo "Connecting to $HOST..."
 
 # Added -R $NOTIFY_PORT:localhost:$NOTIFY_PORT for reverse tunnel
-autossh -M 0 -t -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh ; exit"
+autossh -M 0 -t -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
