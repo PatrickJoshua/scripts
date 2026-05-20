@@ -22,11 +22,11 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Prompt for VNC
-read -p "Enable VNC? [Y/n]: " vnc_input
+read -p "Enable VNC? [Y/n]: " vnc_input < /dev/tty
 vnc_input=${vnc_input:-y}
 
 # Prompt for Sleep
-read -p "Disable sleep? [Y/n]: " sleep_input
+read -p "Disable sleep? [Y/n]: " sleep_input < /dev/tty
 sleep_input=${sleep_input:-y}
 
 # Function to restore original settings on exit
@@ -141,7 +141,7 @@ while true; do
     fi
     
     # 4. Sleep and Wait (or manual trigger)
-    if read -s -t "$CHECK_INTERVAL" -n 1; then
+    if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
         echo -e "\n[i] Manual trigger: Reporting hardware status..."
         ~/Desktop/scripts/report-hw-status.sh
     fi
