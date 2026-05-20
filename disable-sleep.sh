@@ -22,12 +22,12 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Prompt for VNC
-read -p "Enable VNC? [Y/n]: " vnc_input < /dev/tty
-vnc_input=${vnc_input:-y}
+read -p "Enable VNC? [y/N]: " vnc_input < /dev/tty
+vnc_input=${vnc_input:-n}
 
 # Prompt for Sleep
-read -p "Disable sleep? [Y/n]: " sleep_input < /dev/tty
-sleep_input=${sleep_input:-y}
+read -p "Disable sleep? [y/N]: " sleep_input < /dev/tty
+sleep_input=${sleep_input:-n}
 
 # Function to restore original settings on exit
 cleanup() {
