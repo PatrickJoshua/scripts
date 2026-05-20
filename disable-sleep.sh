@@ -5,6 +5,15 @@ CRITICAL_BATT=5      # Battery % to trigger emergency sleep
 CHECK_INTERVAL=180   # Seconds between battery checks
 SCRIPT_INITIALIZED=0 # Tracks if main setup was completed
 VNC_WAS_ENABLED=0
+NOTIFY_PORT=10000
+
+# Function to send notification to the SSH client
+send_notification() {
+    local msg="$1"
+    # Try to send to the reverse tunneled port on localhost
+    # Use a 1-second timeout to avoid hanging if the tunnel is down
+    echo "$msg" | nc -w 1 localhost $NOTIFY_PORT >/dev/null 2>&1 || true
+}
 
 # Ensure the script is run with root privileges
 if [ "$EUID" -ne 0 ]; then
@@ -111,7 +120,13 @@ while true; do
         SYS_POWER=$(powermetrics -n 1 -i 100 --samplers smc,cpu_power 2>/dev/null | grep -iE "Combined Power|System Total power" | head -n 1 | awk '{ if ($0 ~ /mW/) { printf "%.2fW", $(NF-1)/1000 } else { print $(NF-1) "W" } }')
         
         TIME=$(date "+%Y-%m-%d %H:%M:%S")
-        echo "[$TIME] Update -> Batt: ${BATT_PCT:-N/A}% | Source: $POWER_SOURCE | Batt Draw: $BATT_DRAW | Sys Power: ${SYS_POWER:-Unknown}"
+        MSG="Batt: ${BATT_PCT:-N/A}% | Source: $POWER_SOURCE | Draw: $BATT_DRAW"
+        echo "[$TIME] Update -> $MSG | Sys Power: ${SYS_POWER:-Unknown}"
+        
+        # Send notification to the SSH client
+        if [ $SCRIPT_INITIALIZED -eq 1 ]; then
+            send_notification "$MSG"
+        fi
         
         PREV_POWER_SOURCE="$POWER_SOURCE"
         PREV_BATT_PCT="$BATT_PCT"
@@ -119,7 +134,9 @@ while true; do
 
     # 3. Handle Critical Battery Case
     if [ "$POWER_SOURCE" = "Battery Power" ] && [ "$BATT_PCT" -le "$CRITICAL_BATT" ]; then
-        echo -e "\n[!] CRITICAL BATTERY (${BATT_PCT}%). Re-enabling sleep to prevent shutdown."
+        MSG="CRITICAL BATTERY (${BATT_PCT}%). Re-enabling sleep to prevent shutdown."
+        echo -e "\n[!] $MSG"
+        send_notification "$MSG"
         exit 0 
     fi
     
