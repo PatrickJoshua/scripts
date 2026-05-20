@@ -6,10 +6,17 @@ HOST="GLMACM1492118.local"
 
 # Parse arguments
 SCRIPT_ARGS=""
-while getopts "x" opt; do
+NON_INTERACTIVE=0
+SKIP_PROMPTS=0
+while getopts "xn" opt; do
   case $opt in
     x)
-      SCRIPT_ARGS="-x"
+      SCRIPT_ARGS="$SCRIPT_ARGS -x"
+      SKIP_PROMPTS=1
+      ;;
+    n)
+      SCRIPT_ARGS="$SCRIPT_ARGS -n"
+      NON_INTERACTIVE=1
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -17,6 +24,11 @@ while getopts "x" opt; do
       ;;
   esac
 done
+
+if [ $NON_INTERACTIVE -eq 1 ] && [ $SKIP_PROMPTS -eq 0 ]; then
+  echo "Error: The -n (non-interactive) flag requires the -x (skip prompts) flag." >&2
+  exit 1
+fi
 
 # Ensure port is free before starting
 fuser -k ${NOTIFY_PORT}/tcp 2>/dev/null
@@ -51,4 +63,8 @@ fi
 echo "Connecting to $HOST..."
 
 # Added -R $NOTIFY_PORT:localhost:$NOTIFY_PORT for reverse tunnel
-autossh -M 0 -t -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
+if [ "$NON_INTERACTIVE" -eq 1 ]; then
+    autossh -M 0 -t -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null
+else
+    autossh -M 0 -t -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
+fi

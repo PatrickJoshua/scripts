@@ -23,10 +23,14 @@ fi
 
 # Parse arguments
 SKIP_PROMPTS=0
-while getopts "x" opt; do
+NON_INTERACTIVE=0
+while getopts "xn" opt; do
   case $opt in
     x)
       SKIP_PROMPTS=1
+      ;;
+    n)
+      NON_INTERACTIVE=1
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -34,6 +38,11 @@ while getopts "x" opt; do
       ;;
   esac
 done
+
+if [ $NON_INTERACTIVE -eq 1 ] && [ $SKIP_PROMPTS -eq 0 ]; then
+  echo "Error: The -n (non-interactive) flag requires the -x (skip prompts) flag." >&2
+  exit 1
+fi
 
 if [ $SKIP_PROMPTS -eq 1 ]; then
     vnc_input="n"
@@ -161,8 +170,12 @@ while true; do
     fi
     
     # 4. Sleep and Wait (or manual trigger)
-    if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
-        echo -e "\n[i] Manual trigger: Reporting hardware status..."
-        ~/Desktop/scripts/report-hw-status.sh --detailed
+    if [ $NON_INTERACTIVE -eq 1 ]; then
+        sleep "$CHECK_INTERVAL"
+    else
+        if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
+            echo -e "\n[i] Manual trigger: Reporting hardware status..."
+            ~/Desktop/scripts/report-hw-status.sh --detailed
+        fi
     fi
 done
