@@ -135,6 +135,12 @@ PREV_BATT_PCT=""
 PREV_POWER_SOURCE=""
 
 while true; do
+    # 0. Check if we have been orphaned (parent sudo/sshd died)
+    if ! kill -0 $PPID 2>/dev/null; then
+        echo -e "\n[!] Parent process died. Exiting to trigger cleanup."
+        exit 1
+    fi
+
     # 1. Gather Basic Info
     POWER_SOURCE=$(pmset -g batt | head -n 1 | cut -d\' -f2)
     BATT_PCT=$(pmset -g batt | grep -Eo '[0-9]+%' | head -n 1 | tr -d '%')
@@ -171,7 +177,8 @@ while true; do
     
     # 4. Sleep and Wait (or manual trigger)
     if [ $NON_INTERACTIVE -eq 1 ]; then
-        sleep "$CHECK_INTERVAL"
+        sleep "$CHECK_INTERVAL" &
+        wait $!
     else
         if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
             echo -e "\n[i] Manual trigger: Reporting hardware status..."
