@@ -14,7 +14,7 @@ pkill -f "ncat -l -p $NOTIFY_PORT" 2>/dev/null
         # ncat listens for a message, outputs it, then exits, loop restarts it
         msg=$(ncat -l -p $NOTIFY_PORT)
         if [ -n "$msg" ]; then
-            notify-send "Mac Status" "$msg"
+            notify-send -t 300000 "MacBook Air M4 15\" Status" "$msg"
         fi
     done
 ) &
