@@ -61,7 +61,7 @@ fi
 # Function to restore original settings on exit
 cleanup() {
     # Remove traps to prevent recursion
-    trap - EXIT INT TERM HUP QUIT
+    trap - EXIT INT TERM HUP QUIT KILL
 
     if [ -n "$WATCHDOG_PID" ]; then
         kill $WATCHDOG_PID 2>/dev/null || true
@@ -107,7 +107,7 @@ cleanup() {
 # We trap EXIT to ensure cleanup runs on any exit.
 # We trap specific signals to trigger an exit (which then triggers the EXIT trap).
 trap cleanup EXIT
-trap "exit 1" INT TERM HUP QUIT
+trap "exit 1" INT TERM HUP QUIT KILL
 
 # --- ENABLE SERVER MODE ---
 echo "[i] Initiating Headless Server Mode..."
