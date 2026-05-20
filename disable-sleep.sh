@@ -7,6 +7,15 @@ SCRIPT_INITIALIZED=0 # Tracks if main setup was completed
 VNC_WAS_ENABLED=0
 NOTIFY_PORT=10000
 
+# Safe logging helper that writes to file and attempts to write to stdout,
+# ignoring I/O errors and ONLY attempting terminal output if a TTY is present.
+log_status() {
+    echo -e "$1" >> /tmp/disable-sleep.log
+    if [ -t 1 ]; then
+        echo -e "$1" 2>/dev/null || true
+    fi
+}
+
 # Function to send notification to the SSH client
 send_notification() {
     local msg="$1"
@@ -61,7 +70,7 @@ fi
 # Function to restore original settings on exit
 cleanup() {
     # Remove traps to prevent recursion
-    trap - EXIT INT TERM HUP QUIT KILL
+    trap - EXIT INT TERM HUP QUIT
 
     if [ -n "$WATCHDOG_PID" ]; then
         kill $WATCHDOG_PID 2>/dev/null || true
@@ -72,42 +81,33 @@ cleanup() {
         kill $SLEEP_PID 2>/dev/null || true
     fi
 
-    # Safe logging helper that writes to file and attempts to write to stdout,
-    # ignoring I/O errors and ONLY attempting terminal output if a TTY is present.
-    log_cleanup() {
-        echo -e "$1" >> /tmp/disable-sleep.log
-        if [ -t 1 ]; then
-            echo -e "$1" 2>/dev/null || true
-        fi
-    }
-
-    log_cleanup "\n[i] Interruption caught. Restoring system power settings..."
+    log_status "\n[i] Interruption caught. Restoring system power settings..."
     if [ $SCRIPT_INITIALIZED -eq 1 ]; then
         if [[ "$sleep_input" =~ ^[Yy]$ ]]; then
             # Restore system sleep (0 = allow, 1 = disable)
             pmset -a disablesleep 0 >> /tmp/disable-sleep.log 2>&1
-            log_cleanup "[✓] System sleep restored to normal."
+            log_status "[✓] System sleep restored to normal."
         fi
 
         # Restore display sleep to a standard 10 minutes
         pmset -a displaysleep 10 >> /tmp/disable-sleep.log 2>&1
         pmset -b displaysleep 2 >> /tmp/disable-sleep.log 2>&1
-        log_cleanup "[✓] Display sleep settings restored to normal."
+        log_status "[✓] Display sleep settings restored to normal."
 
         # Disable VNC if it was enabled by this script
         if [ $VNC_WAS_ENABLED -eq 1 ]; then
             /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -configure -access -off >> /tmp/disable-sleep.log 2>&1
-            log_cleanup "[✓] VNC disabled."
+            log_status "[✓] VNC disabled."
         fi
     fi
-    log_cleanup "(Graceful script exit)"
+    log_status "(Graceful script exit)"
 }
 
 # Trap signals for clean exit
 # We trap EXIT to ensure cleanup runs on any exit.
 # We trap specific signals to trigger an exit (which then triggers the EXIT trap).
 trap cleanup EXIT
-trap "exit 1" INT TERM HUP QUIT KILL
+trap "exit 1" INT TERM HUP QUIT
 
 # --- ENABLE SERVER MODE ---
 echo "[i] Initiating Headless Server Mode..."
@@ -159,7 +159,7 @@ if [ $NON_INTERACTIVE -eq 1 ]; then
             # The reverse tunnel port is opened by the SSH connection.
             # If the connection drops, sshd immediately closes this listening port.
             if ! nc -z localhost $NOTIFY_PORT >/dev/null 2>&1; then
-                echo -e "\n[!] SSH tunnel dropped. Exiting to trigger cleanup."
+                log_status "\n[!] SSH tunnel dropped. Exiting to trigger cleanup."
                 kill -TERM $$
                 exit 0
             fi
