@@ -109,14 +109,24 @@ else
     echo "SoC (Virtual):       Unknown"
 fi
 
-# Note on Chipset Temperature
-# On Apple Silicon, fine-grained sensor data (CPU cores, GPU) is usually restricted.
-# The 'powermetrics' tool provides this but requires sudo.
+# 9. Detailed SoC Metrics (Requires sudo)
 if [[ "$1" == "--detailed" ]]; then
-    echo "Attempting to get detailed temperatures (requires sudo)..."
-    sudo powermetrics -n 1 --samplers thermal | grep -E "CPU temp|GPU temp"
+    echo "Attempting to get detailed SoC metrics (requires sudo)..."
+    pm_out=$(sudo powermetrics -n 1 -i 100 --samplers cpu_power,gpu_power,ane_power,thermal,network,disk 2>/dev/null)
+    
+    echo "--- SoC Power Consumption ---"
+    echo "$pm_out" | grep -iE "^CPU Power:|^GPU Power:|^ANE Power:|^Combined Power" | head -n 4
+    
+    echo "--- Network Activity ---"
+    echo "$pm_out" | grep -iE "^out:|^in:" | head -n 2
+    
+    echo "--- Disk Activity ---"
+    echo "$pm_out" | grep -iE "^read:|^write:" | head -n 2
+    
+    echo "--- Thermal Pressure ---"
+    echo "$pm_out" | grep -iE "Current pressure level:" | sed 's/Current pressure level:/Pressure Level:/'
 else
-    echo "Note: Run with '--detailed' (requires sudo) for per-core SoC temperatures."
+    echo "Note: Run with '--detailed' (requires sudo) for per-component SoC power (CPU/GPU/ANE) and thermal pressure."
 fi
 
 echo "==========================================="

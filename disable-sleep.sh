@@ -97,7 +97,7 @@ echo "[✓] Screen turned off."
 SCRIPT_INITIALIZED=1
 
 # Print hardware stats
-~/Desktop/scripts/report-hw-status.sh
+~/Desktop/scripts/report-hw-status.sh --detailed
 
 echo "[i] Monitoring energy... (Ctrl+C to stop)"
 echo "--------------------------------------------------------------------------------"
@@ -117,11 +117,11 @@ while true; do
         BATT_DRAW=$(ioreg -rw0 -c AppleSmartBattery | awk '/"Voltage" =/ {v=$3} /"Amperage" =/ {a=$3} END { if(a>2^63) a-=2^64; w=(v*a/1000000); printf "%.2fW\n", w}')
         
         # Calculate Total System Power Consumption via powermetrics (100ms sample)
-        SYS_POWER=$(powermetrics -n 1 -i 100 --samplers smc,cpu_power 2>/dev/null | grep -iE "Combined Power|System Total power" | head -n 1 | awk '{ if ($0 ~ /mW/) { printf "%.2fW", $(NF-1)/1000 } else { print $(NF-1) "W" } }')
+        SYS_POWER=$(powermetrics -n 1 -i 100 --samplers cpu_power,gpu_power,ane_power 2>/dev/null | grep -iE "Combined Power|System Total power" | head -n 1 | awk '{ if ($0 ~ /mW/) { printf "%.2fW", $(NF-1)/1000 } else { printf "%.2fW", $(NF-1) } }')
         
         TIME=$(date "+%Y-%m-%d %H:%M:%S")
-        MSG="Batt: ${BATT_PCT:-N/A}% | Source: $POWER_SOURCE | Draw: $BATT_DRAW"
-        echo "[$TIME] Update -> $MSG | Sys Power: ${SYS_POWER:-Unknown}"
+        MSG="Batt: ${BATT_PCT:-N/A}% | Source: $POWER_SOURCE | Draw: $BATT_DRAW | Sys Power: ${SYS_POWER:-Unknown}"
+        echo "[$TIME] $MSG"
         
         # Send notification to the SSH client
         if [ $SCRIPT_INITIALIZED -eq 1 ]; then
@@ -143,6 +143,6 @@ while true; do
     # 4. Sleep and Wait (or manual trigger)
     if read -s -t "$CHECK_INTERVAL" -n 1 < /dev/tty; then
         echo -e "\n[i] Manual trigger: Reporting hardware status..."
-        ~/Desktop/scripts/report-hw-status.sh
+        ~/Desktop/scripts/report-hw-status.sh --detailed
     fi
 done
