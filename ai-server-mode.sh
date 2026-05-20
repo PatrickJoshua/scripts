@@ -13,7 +13,11 @@ cleanup() {
     
     # Restore Transparency
     echo "Restoring UI transparency..."
-    defaults write com.apple.universalaccess reduceTransparency -bool $((ORIG_TRANSPARENCY == 1))
+    if [ "$ORIG_TRANSPARENCY" -eq 1 ]; then
+        defaults write com.apple.universalaccess reduceTransparency -bool true
+    else
+        defaults write com.apple.universalaccess reduceTransparency -bool false
+    fi
 
     # Revert VRAM limit
     echo "Restoring VRAM limit to $ORIG_VRAM_LIMIT..."
@@ -21,10 +25,15 @@ cleanup() {
     
     # Re-enable Services
     echo "Restarting network services (VNC, AFP, SMB)..."
-    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null
-    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist 2>/dev/null
-    sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
+    [ -f /System/Library/LaunchDaemons/com.apple.screensharing.plist ] && sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null
+    [ -f /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist ] && sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist 2>/dev/null
+    [ -f /System/Library/LaunchDaemons/com.apple.smbd.plist ] && sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
     
+    # Refresh UI to apply transparency changes
+    echo "Refreshing UI (Finder, Dock)..."
+    killall Finder 2>/dev/null
+    killall Dock 2>/dev/null
+
     echo "Cleanup complete. Note: GUI apps and background daemons were not manually restarted (macOS will relaunch them as needed)."
 }
 
@@ -47,13 +56,14 @@ sudo mdutil -a -i off
 
 # 4. Disable Services (VNC, AFP, SMB)
 echo "Disabling network services..."
-sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null
-sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist 2>/dev/null
-sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
+[ -f /System/Library/LaunchDaemons/com.apple.screensharing.plist ] && sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null
+[ -f /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist ] && sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist 2>/dev/null
+[ -f /System/Library/LaunchDaemons/com.apple.smbd.plist ] && sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
 
 # 5. Kill aggressive background daemons
 echo "Killing background daemons (iCloud, Siri, Photos)..."
-killall -9 bird assistantd Siri photoanalysisd mediaanalysisd sharingd softwareupdated 2>/dev/null
+killall -9 bird assistantd photoanalysisd mediaanalysisd sharingd softwareupdated 2>/dev/null
+pkill -9 -fi siri 2>/dev/null
 
 # 6. Kill all GUI apps
 echo "Closing GUI applications..."
@@ -64,8 +74,8 @@ echo "Cleaning up leftover browser/electron helpers..."
 killall "Google Chrome Helper" "Brave Browser Helper" "Renderer" 2>/dev/null
 
 # 8. Relaunch Finder and Dock to clear their cache
-killall Finder
-killall Dock
+killall Finder 2>/dev/null
+killall Dock 2>/dev/null
 
 # 9. Purge memory
 echo "Final memory purge..."
