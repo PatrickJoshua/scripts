@@ -73,10 +73,12 @@ cleanup() {
     fi
 
     # Safe logging helper that writes to file and attempts to write to stdout,
-    # ignoring I/O errors if the terminal is dead.
+    # ignoring I/O errors and ONLY attempting terminal output if a TTY is present.
     log_cleanup() {
         echo -e "$1" >> /tmp/disable-sleep.log
-        echo -e "$1" 2>/dev/null || true
+        if [ -t 1 ]; then
+            echo -e "$1" 2>/dev/null || true
+        fi
     }
 
     log_cleanup "\n[i] Interruption caught. Restoring system power settings..."
