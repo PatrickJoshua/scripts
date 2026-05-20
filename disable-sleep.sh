@@ -6,6 +6,7 @@ CHECK_INTERVAL=180   # Seconds between battery checks
 SCRIPT_INITIALIZED=0 # Tracks if main setup was completed
 VNC_WAS_ENABLED=0
 NOTIFY_PORT=10000
+MAIN_PID=$$
 
 # Safe logging helper that writes to file and attempts to write to stdout,
 # ignoring I/O errors and ONLY attempting terminal output if a TTY is present.
@@ -80,6 +81,7 @@ cleanup() {
     if [ -n "$SLEEP_PID" ]; then
         kill $SLEEP_PID 2>/dev/null || true
     fi
+    pkill -P $MAIN_PID sleep 2>/dev/null || true
 
     log_status "\n[i] Interruption caught. Restoring system power settings..."
     if [ $SCRIPT_INITIALIZED -eq 1 ]; then
@@ -101,13 +103,16 @@ cleanup() {
         fi
     fi
     log_status "(Graceful script exit)"
+    
+    # If cleanup is running inside the watchdog subshell, kill the stuck parent script
+    if [ "$BASHPID" != "$MAIN_PID" ]; then
+        kill -9 $MAIN_PID 2>/dev/null || true
+    fi
+    exit 0
 }
 
 # Trap signals for clean exit
-# We trap EXIT to ensure cleanup runs on any exit.
-# We trap specific signals to trigger an exit (which then triggers the EXIT trap).
-trap cleanup EXIT
-trap "exit 1" INT TERM HUP QUIT
+trap cleanup EXIT INT TERM HUP QUIT
 
 # --- ENABLE SERVER MODE ---
 echo "[i] Initiating Headless Server Mode..."
@@ -159,9 +164,8 @@ if [ $NON_INTERACTIVE -eq 1 ]; then
             # The reverse tunnel port is opened by the SSH connection.
             # If the connection drops, sshd immediately closes this listening port.
             if ! nc -z localhost $NOTIFY_PORT >/dev/null 2>&1; then
-                log_status "\n[!] SSH tunnel dropped. Exiting to trigger cleanup."
-                kill -TERM $$
-                exit 0
+                log_status "\n[!] SSH tunnel dropped. Watchdog taking over cleanup."
+                cleanup
             fi
             sleep 5
         done
