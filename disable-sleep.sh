@@ -11,7 +11,9 @@ MAIN_PID=$$
 # Safe logging helper that writes to file and attempts to write to stdout,
 # ignoring I/O errors and ONLY attempting terminal output if a TTY is present.
 log_status() {
-    echo -e "$1" >> /tmp/disable-sleep.log
+    local TIME=$(date "+%Y-%m-%d %H:%M:%S")
+    # Only add the timestamp to the file log, keep terminal output clean
+    echo -e "[$TIME] $1" >> /tmp/disable-sleep.log
     if [ -t 1 ]; then
         echo -e "$1" 2>/dev/null || true
     fi
