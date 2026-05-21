@@ -208,7 +208,8 @@ while true; do
         echo "[$TIME] $MSG"
         
         # Send notification to the SSH client
-        if [ $SCRIPT_INITIALIZED -eq 1 ]; then
+        # Only send if this isn't the first pass (PREV_POWER_SOURCE will be empty on first pass)
+        if [ $SCRIPT_INITIALIZED -eq 1 ] && [ -n "$PREV_POWER_SOURCE" ]; then
             send_notification "$MSG"
         fi
         
