@@ -2,7 +2,8 @@
 
 # Configuration
 NOTIFY_PORT=10000
-HOST="GLMACM1492118.local"
+#HOST="GLMACM1492118.local"
+HOST="pa3k.local"
 
 # Parse arguments
 SCRIPT_ARGS=""
