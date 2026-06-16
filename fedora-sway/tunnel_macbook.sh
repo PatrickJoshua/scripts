@@ -25,6 +25,7 @@ while getopts "xn" opt; do
       ;;
   esac
 done
+shift $((OPTIND-1))
 
 if [ $NON_INTERACTIVE -eq 1 ] && [ $SKIP_PROMPTS -eq 0 ]; then
   echo "Error: The -n (non-interactive) flag requires the -x (skip prompts) flag." >&2
@@ -60,7 +61,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM HUP QUIT
 
-if ! ping -c 1 -W 2 "$HOST" &> /dev/null; then
+if [ -n "$1" ]; then
+    HOST="$1"
+elif ! ping -c 1 -W 2 "$HOST" &> /dev/null; then
     HOST="192.168.1.215"
 fi
 
