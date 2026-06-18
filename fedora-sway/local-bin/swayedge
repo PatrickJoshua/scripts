@@ -1,0 +1,2 @@
+#!/bin/bash
+sway -c ~/.config/sway/config.lean

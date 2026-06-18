@@ -1,0 +1,13 @@
+#!/bin/bash
+# 1. Native Wayland (Efficiency)
+# 2. Disable Vulkan (Stability)
+# 3. Enable VA-API (Battery-saving video)
+/usr/bin/microsoft-edge \
+  --enable-features=UseOzonePlatform,VaapiVideoDecoder,WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation \
+  --ozone-platform=wayland \
+  --disable-features=WaylandFractionalScaleV1,Vulkan,VulkanFromANGLE,DefaultANGLEVulkan \
+  --disable-dev-shm-usage \
+  --disable-vulkan \
+  "$@"
+#  --use-angle=opengl \
+#  --use-gl=egl-angle \
