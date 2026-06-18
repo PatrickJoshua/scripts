@@ -2,7 +2,8 @@
 
 # Configuration
 LLAMA_DIR="/home/pa3k/llama.cpp"
-MODEL_PATH="$LLAMA_DIR/models/microsoft_Phi-4-mini-instruct-Q5_K_M.gguf"
+DEFAULT_MODEL="$LLAMA_DIR/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+MODEL_PATH="${1:-$DEFAULT_MODEL}"
 SERVER_BIN="$LLAMA_DIR/build/bin/llama-server"
 PORT=8888
 CTX_SIZE=16384
@@ -23,5 +24,7 @@ echo "Port: $PORT"
     -m "$MODEL_PATH" \
     --port "$PORT" \
     --n-gpu-layers "$GPU_LAYERS" \
-    --device Vulkan0
-#    --ctx-size "$CTX_SIZE" 
+    --device Vulkan0 \
+    --ctx-size "$CTX_SIZE" \
+    --mlock --no-mmap
+#    --jinja
