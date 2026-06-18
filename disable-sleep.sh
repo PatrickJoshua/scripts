@@ -70,6 +70,8 @@ else
     sleep_input=${sleep_input:-n}
 fi
 
+INTERRUPTED=0
+
 # Function to restore original settings on exit
 cleanup() {
     # Remove traps to prevent recursion
@@ -118,12 +120,16 @@ cleanup() {
         exit 0
     else
         # We are the main script.
+        if [ $INTERRUPTED -eq 1 ]; then
+            exit 130
+        fi
         exit 0
     fi
 }
 
 # Trap signals for clean exit
-trap cleanup EXIT INT TERM HUP QUIT
+trap 'INTERRUPTED=1; cleanup' INT TERM HUP QUIT
+trap cleanup EXIT
 
 # --- ENABLE SERVER MODE ---
 echo "[i] Initiating Headless Server Mode..."
