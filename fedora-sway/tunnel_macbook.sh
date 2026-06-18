@@ -63,17 +63,22 @@ trap cleanup EXIT INT TERM HUP QUIT
 
 if [ -n "$1" ]; then
     HOST="$1"
-elif ! ping -c 1 -W 2 "$HOST" &> /dev/null; then
-    HOST="192.168.1.215"
+#elif ! ping -c 1 -W 2 "$HOST" &> /dev/null; then
+#    HOST="192.168.1.215"
 fi
 
-echo "Connecting to $HOST..."
+while true; do
+    echo "Connecting to $HOST..."
 
-# Added -R $NOTIFY_PORT:localhost:$NOTIFY_PORT for reverse tunnel
-if [ "$NON_INTERACTIVE" -eq 1 ]; then
-    autossh -M 0 -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
-    AUTOSSH_PID=$!
-    wait $AUTOSSH_PID
-else
-    autossh -M 0 -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
-fi
+    # Added -R $NOTIFY_PORT:localhost:$NOTIFY_PORT for reverse tunnel
+    if [ "$NON_INTERACTIVE" -eq 1 ]; then
+        autossh -M 0 -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
+        AUTOSSH_PID=$!
+        wait $AUTOSSH_PID
+    else
+        autossh -M 0 -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
+    fi
+
+    echo "Connection lost or closed. Retrying in 5 seconds..."
+    sleep 5
+done
