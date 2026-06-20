@@ -6,7 +6,9 @@ DEFAULT_MODEL="$LLAMA_DIR/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
 MODEL_PATH="${1:-$DEFAULT_MODEL}"
 SERVER_BIN="$LLAMA_DIR/build/bin/llama-server"
 PORT=8888
-CTX_SIZE=16384
+#CTX_SIZE=8192
+#CTX_SIZE=16384
+CTX_SIZE=32768
 GPU_LAYERS=99
 
 # Check if model exists
@@ -26,5 +28,6 @@ echo "Port: $PORT"
     --n-gpu-layers "$GPU_LAYERS" \
     --device Vulkan0 \
     --ctx-size "$CTX_SIZE" \
-    --mlock --no-mmap
+    --mlock --no-mmap \
+    --tools read_file,write_file,exec_shell_command
 #    --jinja
