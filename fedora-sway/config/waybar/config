@@ -29,12 +29,12 @@
 	"custom/power"
     ],
     "custom/tlp": {
-        "exec": "~/.config/waybar/scripts/tlp_status.sh",
+        "exec": "~/.config/waybar/scripts/power_status.sh",
         "return-type": "json",
         "interval": 90,
         "format": "{}"
 	,"rotate": 90
-	,"on-click": "foot --app-id='foot-float' ~/.config/waybar/scripts/update_tlp_perf.sh"
+	,"on-click": "foot --app-id='foot-float' ~/.config/waybar/scripts/update_cpu_cap.sh"
     },
     "sway/window": {
     "format": "{icon}",
@@ -183,7 +183,7 @@
         "format-icons": ["", "", "", "", ""]
 	,"rotate": 90,
 	"interval": 10
-	,"on-click-right": "foot --app-id='foot-float' ~/.config/waybar/scripts/update_tlp_batt_charge.sh"
+	,"on-click-right": "foot --app-id='foot-float' ~/.config/waybar/scripts/update_batt_charge_cap.sh"
     },
     "battery#bat2": {
         "bat": "BAT2"

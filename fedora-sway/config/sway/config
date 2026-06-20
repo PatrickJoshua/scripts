@@ -317,4 +317,10 @@ bindswitch --reload --locked lid:off output $laptop enable
 # important to make the magic work. And if you want to learn the secret behind
 # the trick, it's all in the `wordexp(3)`.
 #
+# Import Wayland environment into systemd user session
+exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK
+
+# Set initial mode on startup based on time
+exec_always ~/scripts/mode-check.sh
+
 include '$(/usr/libexec/sway/layered-include "/usr/share/sway/config.d/*.conf" "/etc/sway/config.d/*.conf" "${XDG_CONFIG_HOME:-$HOME/.config}/sway/config.d/*.conf")'
