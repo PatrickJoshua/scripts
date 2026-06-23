@@ -61,12 +61,37 @@ POWER_DRAW=$(awk '{if (NR==1) i=$1; else v=$1} END {printf("%.1fW", (i*v)/100000
 
 # Hardware 
 RAM=$(free -m | awk '/Mem:/ { printf("%.1f%% (%.1fGB)", $3/$2 * 100.0, $3/1024.0) }')
-CPU_UTIL=$(top -bn1 | grep "Cpu(s)" | awk '{printf("%.1f%%", $2 + $4)}')
+#CPU_UTIL=$(top -bn1 | grep "Cpu(s)" | awk '{printf("%.1f%%", $2 + $4)}')
 CPU_TEMP=$(awk '{printf("%.1f°C", $1/1000)}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
 
 # Media
 VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { print $2 }')
 BACKLIGHT=$(brightnessctl -P g 2>/dev/null)
+
+
+#CPU Util efficient method
+# 1. Grab the first snapshot of CPU counters
+read -r cpu user nice system idle iowait irq softirq steal _ < /proc/stat
+TOTAL1=$((user + nice + system + idle + iowait + irq + softirq + steal))
+IDLE1=$((idle + iowait))
+
+# 2. Wait a tiny fraction of a second to establish a delta
+sleep 0.2
+
+# 3. Grab the second snapshot
+read -r cpu user nice system idle iowait irq softirq steal _ < /proc/stat
+TOTAL2=$((user + nice + system + idle + iowait + irq + softirq + steal))
+IDLE2=$((idle + iowait))
+
+# 4. Calculate the utilization percentage using awk for floating-point math
+CPU_UTIL=$(awk -v t1="$TOTAL1" -v t2="$TOTAL2" -v i1="$IDLE1" -v i2="$IDLE2" '
+  BEGIN {
+    total = t2 - t1;
+    idle = i2 - i1;
+    if (total > 0) printf("%.1f%%", 100 * (total - idle) / total);
+    else print "0.0%";
+  }
+')
 
 # --- Final Output ---
 echo " $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS|  $NETWORK |  $VOL | 💡 $BACKLIGHT%"
