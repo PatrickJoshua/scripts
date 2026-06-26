@@ -8,5 +8,5 @@ if [ "$1" == "bat" ]; then
     /usr/bin/brightnessctl set 1
 elif [ "$1" == "ac" ]; then
     # Plugged in: brighten the screen
-    /usr/bin/brightnessctl set 50%
+    /usr/bin/brightnessctl set 30%
 fi
