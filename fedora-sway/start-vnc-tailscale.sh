@@ -32,5 +32,5 @@ cleanup() {
 # Trap exits and standard signals to ensure cleanup is run
 trap cleanup EXIT INT TERM HUP QUIT
 
-# Start wayvnc
-wayvnc $(tailscale ip -4) 5900
+# Start wayvnc with lid-close and system sleep/suspend inhibited
+systemd-inhibit --what=handle-lid-switch:sleep --why="VNC Session Active" --who="start-vnc-tailscale.sh" --mode=block wayvnc $(tailscale ip -4) 5900
