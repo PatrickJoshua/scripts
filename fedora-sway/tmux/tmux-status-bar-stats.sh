@@ -94,4 +94,12 @@ CPU_UTIL=$(awk -v t1="$TOTAL1" -v t2="$TOTAL2" -v i1="$IDLE1" -v i2="$IDLE2" '
 ')
 
 # --- Final Output ---
-echo " $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS|  $NETWORK |  $VOL | 💡 $BACKLIGHT%"
+FULL_OUTPUT="|  $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS|  $NETWORK |  $VOL | 💡$BACKLIGHT% |"
+
+WIDTH="$1"
+if [ -n "$WIDTH" ] && [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
+    COMPACT_OUTPUT="$POWER_LIMITS $NETWORK  $VOL 💡$BACKLIGHT%  $RAM  $CPU_UTIL  $CPU_TEMP $BATT_STATUS $BATT_LEVEL% $POWER_DRAW"
+    echo "$COMPACT_OUTPUT"
+else
+    echo "$FULL_OUTPUT"
+fi
