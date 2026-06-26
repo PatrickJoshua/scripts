@@ -2,7 +2,8 @@
 
 # Configuration
 LLAMA_DIR="/home/pa3k/llama.cpp"
-DEFAULT_MODEL="$LLAMA_DIR/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+#DEFAULT_MODEL="$LLAMA_DIR/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+DEFAULT_MODEL="$LLAMA_DIR/models/Qwen3.5-9B-Q4_K_M.gguf"
 MODEL_PATH="${1:-$DEFAULT_MODEL}"
 SERVER_BIN="$LLAMA_DIR/build/bin/llama-server"
 PORT=8888
@@ -27,6 +28,7 @@ echo "Port: $PORT"
     --port "$PORT" \
     --n-gpu-layers "$GPU_LAYERS" \
     --device Vulkan0 \
+    --batch-size 256 \
     --ctx-size "$CTX_SIZE" \
     --mlock --no-mmap \
     --tools read_file,write_file,exec_shell_command

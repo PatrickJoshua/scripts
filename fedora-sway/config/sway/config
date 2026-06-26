@@ -40,7 +40,7 @@ set $menu $rofi_cmd -show combi -combi-modes "windows,drun,run,ssh,combi"
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 # Requires: desktop-backgrounds-compat, swaybg, jxl-pixbuf-loader
-output * bg /usr/share/backgrounds/default.jxl fill
+output * bg ~/Pictures/BingWallpapers/bing-latest.jpg fill
 #
 # Example configuration:
 #
@@ -285,7 +285,7 @@ for_window [app_id="foot-float"] floating enable
 bindsym $mod+Shift+t exec $term --app-id='foot-float' 
 
 # Bind Win+L to lock
-bindsym $mod+Alt+L exec swaylock
+bindsym $mod+Alt+L exec swaylock -i ~/Pictures/BingWallpapers/bing-latest.jpg
 
 xwayland disable
 

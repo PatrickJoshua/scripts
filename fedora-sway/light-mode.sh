@@ -6,4 +6,5 @@ fi
 
 gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'
 gsettings set org.gnome.desktop.interface color-scheme 'default'
-swaymsg output "*" bg /usr/share/backgrounds/default.jxl fill
+#swaymsg output "*" bg /usr/share/backgrounds/default.jxl fill
+/home/pa3k/.config/sway/scripts/bing-wallpaper.sh
