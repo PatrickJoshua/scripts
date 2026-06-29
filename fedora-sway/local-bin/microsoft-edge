@@ -8,6 +8,7 @@
   --disable-features=WaylandFractionalScaleV1,Vulkan,VulkanFromANGLE,DefaultANGLEVulkan \
   --disable-dev-shm-usage \
   --disable-vulkan \
+  --password-store=gnome-libsecret \
   "$@"
 #  --use-angle=opengl \
 #  --use-gl=egl-angle \
