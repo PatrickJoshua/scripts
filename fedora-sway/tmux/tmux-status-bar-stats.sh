@@ -16,7 +16,8 @@ fi
 # --- SLOW METRICS (Cached) ---
 if [ "$AGE" -ge "$CACHE_TIMEOUT" ]; then
     # 1. Fetch Power Limits
-    POWER_LIMITS=$(~/scripts/fedora-sway/config/waybar/scripts/power_status.sh | jq -r '.text' 2>/dev/null)
+    #POWER_LIMITS=$(~/scripts/fedora-sway/config/waybar/scripts/power_status.sh | jq -r '.text' 2>/dev/null)
+    POWER_LIMITS=$(~/scripts/fedora-sway/config/waybar/scripts/power_status.sh --tmux 2>/dev/null)
     
     # 2. Fetch Network
     WIFI_IFACE=$(ls /sys/class/net | grep -m 1 -E '^wl')
@@ -65,7 +66,8 @@ RAM=$(free -m | awk '/Mem:/ { printf("%.1f%% (%.1fGB)", $3/$2 * 100.0, $3/1024.0
 CPU_TEMP=$(awk '{printf("%.1f°C", $1/1000)}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
 
 # Media
-VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { print $2 }')
+#VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { print $2 }')
+VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { sub(/%/, "", $2); print $2 }')
 BACKLIGHT=$(brightnessctl -P g 2>/dev/null)
 
 
@@ -94,11 +96,11 @@ CPU_UTIL=$(awk -v t1="$TOTAL1" -v t2="$TOTAL2" -v i1="$IDLE1" -v i2="$IDLE2" '
 ')
 
 # --- Final Output ---
-FULL_OUTPUT="|  $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS|  $NETWORK |  $VOL | 💡$BACKLIGHT% |"
+FULL_OUTPUT="|  $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% |  $NETWORK |  $VOL% | 💡$BACKLIGHT% |"
 
 WIDTH="$1"
 if [ -n "$WIDTH" ] && [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
-    COMPACT_OUTPUT="$POWER_LIMITS $NETWORK  $VOL 💡$BACKLIGHT%  $RAM  $CPU_UTIL  $CPU_TEMP $BATT_STATUS $BATT_LEVEL% $POWER_DRAW"
+    COMPACT_OUTPUT="$POWER_LIMITS  $NETWORK  $VOL 💡$BACKLIGHT  $RAM  $CPU_UTIL  $CPU_TEMP $BATT_STATUS $BATT_LEVEL% $POWER_DRAW"
     echo "$COMPACT_OUTPUT"
 else
     echo "$FULL_OUTPUT"
