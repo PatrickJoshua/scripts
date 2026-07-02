@@ -96,9 +96,19 @@ for_window [app_id="^$" title="^$"] floating enable, no_focus, border none
 
 xwayland disable
 
+# swayidle
+exec swayidle -w \
+    timeout 60 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then swaymsg "output * power off"; fi' \
+    resume 'swaymsg "output * power on"' \
+    timeout 300 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then systemctl suspend; else swaymsg "output * power off"; fi' \
+    timeout 18000 'if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then systemctl suspend; fi' \
+
 # Minimal Keyring and Polkit initialization
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
-exec /usr/libexec/lxqt-policykit-agent
+#exec /usr/libexec/lxqt-policykit-agent
 exec gnome-keyring-daemon --start --components=secrets
+
+# Check battery
+bindsym $mod+b exec batt
 
 exec ~/.local/bin/microsoft-edge

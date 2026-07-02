@@ -1,0 +1,12 @@
+[Unit]
+Description=TTY Battery Power Manager (Screen Blank & Suspend)
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/tty-battery-manager.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

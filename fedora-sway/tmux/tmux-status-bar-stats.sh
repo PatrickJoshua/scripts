@@ -98,10 +98,34 @@ CPU_UTIL=$(awk -v t1="$TOTAL1" -v t2="$TOTAL2" -v i1="$IDLE1" -v i2="$IDLE2" '
 # --- Final Output ---
 FULL_OUTPUT="|  $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% |  $NETWORK |  $VOL% | 💡$BACKLIGHT% |"
 
-WIDTH="$1"
+# Detect if current client run context is a raw TTY
+IS_TTY=0
+if [ "$1" = "tty" ] || [ "$TERM" = "linux" ]; then
+    IS_TTY=1
+fi
+
+if [ "$IS_TTY" -eq 1 ]; then
+    # Get the width of the linux client
+    WIDTH=$(tmux list-clients -F '#{client_width} #{client_termname}' 2>/dev/null | grep 'linux$' | awk '{print $1}' | sort -n | head -n1)
+else
+    # Get the width of the non-linux client(s)
+    WIDTH=$(tmux list-clients -F '#{client_width} #{client_termname}' 2>/dev/null | grep -v 'linux$' | awk '{print $1}' | sort -n | head -n1)
+fi
+
+# Fallback if WIDTH is empty
+if [ -z "$WIDTH" ]; then
+    WIDTH=$(tmux list-clients -F '#{client_width}' 2>/dev/null | sort -n | head -n1)
+fi
+
 if [ -n "$WIDTH" ] && [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
     COMPACT_OUTPUT="$POWER_LIMITS  $NETWORK  $VOL 💡$BACKLIGHT  $RAM  $CPU_UTIL  $CPU_TEMP $BATT_STATUS $BATT_LEVEL% $POWER_DRAW"
-    echo "$COMPACT_OUTPUT"
+    FINAL_OUT="$COMPACT_OUTPUT"
 else
-    echo "$FULL_OUTPUT"
+    FINAL_OUT="$FULL_OUTPUT"
+fi
+
+if [ "$IS_TTY" -eq 1 ]; then
+    echo "$FINAL_OUT" | perl -pe 's/[^\x00-\x7F]//g'
+else
+    echo "$FINAL_OUT"
 fi
