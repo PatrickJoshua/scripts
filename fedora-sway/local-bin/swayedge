@@ -1,2 +1,8 @@
 #!/bin/bash
+# Ensure a clean state by stopping any existing sway-session.service
+systemctl --user stop sway-session.service 2>/dev/null
+
 sway -c ~/.config/sway/config.lean
+
+# Stop the sway-session.service when sway exits
+systemctl --user stop sway-session.service

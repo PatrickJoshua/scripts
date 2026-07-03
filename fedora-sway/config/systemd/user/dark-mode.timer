@@ -1,9 +1,12 @@
 [Unit]
 Description=Run Dark Mode at 6 PM
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
 
 [Timer]
 OnCalendar=*-*-* 18:00:00
 Persistent=true
 
 [Install]
-WantedBy=timers.target
+WantedBy=graphical-session.target

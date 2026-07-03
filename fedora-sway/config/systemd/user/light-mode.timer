@@ -1,9 +1,12 @@
 [Unit]
 Description=Run Light Mode at 6 AM
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
 
 [Timer]
 OnCalendar=*-*-* 06:00:00
 Persistent=true
 
 [Install]
-WantedBy=timers.target
+WantedBy=graphical-session.target

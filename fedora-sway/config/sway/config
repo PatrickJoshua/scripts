@@ -101,7 +101,7 @@ output * bg ~/Pictures/BingWallpapers/bing-latest.jpg fill
     bindsym $mod+Shift+c reload
 
     # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'systemctl --user stop sway-session.service && swaymsg exit'
 #
 # Moving around:
 #
@@ -322,6 +322,7 @@ bindsym $mod+Shift+m exec wayvncctl output-cycle
 #
 # Import Wayland environment into systemd user session
 exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK
+exec systemctl --user start sway-session.service
 
 # Set initial mode on startup based on time
 #exec_always ~/scripts/mode-check.sh

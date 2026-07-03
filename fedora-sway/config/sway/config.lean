@@ -17,7 +17,7 @@ set $menu $rofi_cmd -show combi -combi-modes "window,drun,run,ssh,combi"
     bindsym $mod+Shift+c reload
 
     # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaymsg exit
+    bindsym $mod+Shift+e exec systemctl --user stop sway-session.service && swaymsg exit
 
 # Others
 floating_modifier $mod normal
@@ -112,3 +112,6 @@ exec gnome-keyring-daemon --start --components=secrets
 bindsym $mod+b exec batt
 
 exec ~/.local/bin/microsoft-edge
+
+# Start systemd graphical session target via sway-session.service
+exec systemctl --user start sway-session.service

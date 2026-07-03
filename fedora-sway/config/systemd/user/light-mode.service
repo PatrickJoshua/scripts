@@ -1,10 +1,12 @@
 [Unit]
 Description=Switch to Light Mode
+PartOf=graphical-session.target
 After=graphical-session.target
+Requisite=graphical-session.target
 
 [Service]
 Type=oneshot
 ExecStart=/home/pa3k/light-mode.sh
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

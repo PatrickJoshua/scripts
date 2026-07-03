@@ -1,0 +1,11 @@
+[Unit]
+Description=Sway Session Leader
+BindsTo=graphical-session.target
+Wants=graphical-session.target
+Before=graphical-session.target
+PropagatesStopTo=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/true
