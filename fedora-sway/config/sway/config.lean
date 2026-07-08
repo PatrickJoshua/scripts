@@ -1,6 +1,8 @@
 # Then ensure your $mod variable is set to Mod4
 set $mod Mod4
 
+include /usr/share/sway/config.d/60-bindings-volume.conf
+
 set $term foot
 set $rofi_cmd rofi \
         -terminal '$term'

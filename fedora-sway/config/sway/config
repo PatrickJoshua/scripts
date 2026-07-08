@@ -40,7 +40,11 @@ set $menu $rofi_cmd -show combi -combi-modes "windows,drun,run,ssh,combi"
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 # Requires: desktop-backgrounds-compat, swaybg, jxl-pixbuf-loader
-output * bg ~/Pictures/BingWallpapers/bing-latest.jpg fill
+# Instantly set a clean fallback background on startup (never fails)
+output * bg #222222 solid_color
+
+# Delay setting the downloaded Bing wallpaper to give time for the systemd service to download it first on initial boot
+exec_always "sleep 1 && [ -f ~/Pictures/BingWallpapers/bing-latest.jpg ] && swaymsg 'output * bg ~/Pictures/BingWallpapers/bing-latest.jpg fill'"
 #
 # Example configuration:
 #
