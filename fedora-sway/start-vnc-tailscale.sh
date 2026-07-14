@@ -4,6 +4,35 @@
 BYEDPI_STARTED=0
 WAS_PROXY_CONFIGURED=0
 
+# Initialize headless display tracking variables
+CREATE_HEADLESS=0
+TERMINATE_PHYSICAL=0
+HEADLESS_RES="1638x639"
+HEADLESS_OUTPUT=""
+declare -a DISABLED_OUTPUTS=()
+
+# Prompt to create a HEADLESS display and configure options
+if [ -t 0 ] || [ -c /dev/tty ]; then
+    read -p "Create a HEADLESS display on Sway? [Y/n]: " create_hl < /dev/tty
+    create_hl=${create_hl:-y}
+    if [[ "$create_hl" =~ ^[Yy]$ ]]; then
+        CREATE_HEADLESS=1
+        
+        # Ask to terminate physical displays
+        read -p "Terminate all other physical displays? [y/N]: " term_phys < /dev/tty
+        term_phys=${term_phys:-n}
+        if [[ "$term_phys" =~ ^[Yy]$ ]]; then
+            TERMINATE_PHYSICAL=1
+        fi
+        
+        # Ask for headless display resolution
+        read -p "Set HEADLESS display resolution [$HEADLESS_RES]: " hl_res < /dev/tty
+        if [ -n "$hl_res" ]; then
+            HEADLESS_RES="$hl_res"
+        fi
+    fi
+fi
+
 # Check SSID to see if ByeDPI is required
 CURRENT_SSID=$(nmcli -t -f active,ssid dev wifi | grep '^yes:' | cut -d: -f2 2>/dev/null)
 
@@ -85,6 +114,20 @@ NGROK_PID=""
 cleanup() {
     # Remove traps to prevent recursion/double invocation
     trap - EXIT INT TERM HUP QUIT
+
+    # Restore disabled physical outputs and destroy headless output
+    if [ ${#DISABLED_OUTPUTS[@]} -gt 0 ]; then
+        echo "[i] Restoring physical outputs..."
+        for out in "${DISABLED_OUTPUTS[@]}"; do
+            echo "[i] Enabling output: $out"
+            swaymsg output "$out" enable >/dev/null 2>&1 || true
+        done
+    fi
+
+    if [ -n "$HEADLESS_OUTPUT" ]; then
+        echo "[i] Destroying headless output: $HEADLESS_OUTPUT"
+        swaymsg output "$HEADLESS_OUTPUT" unplug >/dev/null 2>&1 || true
+    fi
 
     # Kill ngrok if it was started
     if [ -n "$NGROK_PID" ]; then
@@ -211,6 +254,10 @@ for ip in $LOCAL_IPS; do
     fi
 done
 
+# Print mDNS address
+MDNS_HOST=$(hostname 2>/dev/null || uname -n || echo "localhost")
+echo "  - mDNS:      ${MDNS_HOST}.local"
+
 if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
     echo "  - Ngrok TCP: ${NGROK_URL#tcp://}"
 else
@@ -218,6 +265,60 @@ else
 fi
 echo "============================================="
 
+if [ "$CREATE_HEADLESS" -eq 1 ]; then
+    echo "[i] Setting up HEADLESS display..."
+    # Get existing outputs before creating the headless one
+    EXISTING_OUTPUTS=$(swaymsg -t get_outputs | jq -r '.[] | .name' 2>/dev/null)
+    
+    # Create the headless output
+    if swaymsg create_output >/dev/null 2>&1; then
+        # Find the new headless output name
+        NEW_OUTPUTS=$(swaymsg -t get_outputs | jq -r '.[] | .name' 2>/dev/null)
+        for out in $NEW_OUTPUTS; do
+            if [[ "$out" =~ ^HEADLESS- ]] && ! grep -q -w "$out" <<< "$EXISTING_OUTPUTS"; then
+                HEADLESS_OUTPUT="$out"
+                break
+            fi
+        done
+        
+        if [ -n "$HEADLESS_OUTPUT" ]; then
+            echo "[✓] Created headless output: $HEADLESS_OUTPUT"
+            
+            # Set headless output resolution
+            echo "[i] Setting resolution of $HEADLESS_OUTPUT to $HEADLESS_RES..."
+            if ! swaymsg output "$HEADLESS_OUTPUT" resolution "$HEADLESS_RES" >/dev/null 2>&1; then
+                # Fallback to custom mode if resolution fails
+                swaymsg output "$HEADLESS_OUTPUT" mode --custom "${HEADLESS_RES}@60Hz" >/dev/null 2>&1 || true
+            fi
+            
+            # Conditionally disable other physical outputs if requested
+            if [ "$TERMINATE_PHYSICAL" -eq 1 ]; then
+                # Get list of currently active outputs (other than the new headless one) to disable them
+                PHYSICAL_OUTPUTS=$(swaymsg -t get_outputs | jq -r '.[] | select(.active and .name != "'"$HEADLESS_OUTPUT"'") | .name' 2>/dev/null)
+                
+                for out in $PHYSICAL_OUTPUTS; do
+                    echo "[i] Disabling physical output: $out"
+                    if swaymsg output "$out" disable >/dev/null 2>&1; then
+                        DISABLED_OUTPUTS+=("$out")
+                    else
+                        echo "[!] Failed to disable physical output: $out"
+                    fi
+                done
+            fi
+        else
+            echo "[!] Failed to identify the newly created headless output."
+        fi
+    else
+        echo "[!] Failed to create headless output via swaymsg."
+    fi
+fi
+
 echo "[i] Inhibiting system sleep and lid-close suspend..."
 # Start wayvnc on all interfaces with lid-close and system sleep/suspend inhibited
-systemd-inhibit --what=handle-lid-switch:sleep --why="VNC Session Active" --who="start-vnc-tailscale.sh" --mode=block wayvnc 0.0.0.0 5900
+WAYVNC_ARGS=()
+if [ -n "$HEADLESS_OUTPUT" ]; then
+    WAYVNC_ARGS+=("-o" "$HEADLESS_OUTPUT")
+fi
+WAYVNC_ARGS+=("0.0.0.0" "5900")
+
+systemd-inhibit --what=handle-lid-switch:sleep --why="VNC Session Active" --who="start-vnc-tailscale.sh" --mode=block wayvnc "${WAYVNC_ARGS[@]}"
