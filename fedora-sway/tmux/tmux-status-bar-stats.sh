@@ -1,11 +1,25 @@
 #!/bin/bash
 
+# --- Input Arguments ---
+# $1 = "tty" or "default" (from tmux client_termname)
+# $2 = Width of the client window (from tmux client_width)
+IS_TTY=$([ "$1" = "tty" ] || [ "$TERM" = "linux" ] && echo 1 || echo 0)
+WIDTH=${2:-999} # Fallback to 999 if no width provided
+
+# --- Icons Setup ---
+if [ "$IS_TTY" -eq 1 ]; then
+    IC_MENU="" IC_CPU="" IC_TEMP="" IC_WIFI="" IC_VOL="" IC_LGT=""
+else
+    IC_MENU="" IC_CPU="" IC_TEMP="" IC_WIFI="" IC_VOL="" IC_LGT="💡"
+fi
+
 # --- Setup Cache Variables ---
 CACHE_FILE="/tmp/tmux_slow_metrics.cache"
-CACHE_TIMEOUT=90 # Update slow metrics every 90 seconds
+CPU_CACHE_FILE="/tmp/tmux_cpu_metrics.cache"
+CACHE_TIMEOUT=90
 CURRENT_TIME=$(date +%s)
 
-# Check if cache file exists and get its age, otherwise force an update
+# --- SLOW METRICS (Cached) ---
 if [ -f "$CACHE_FILE" ]; then
     FILE_TIME=$(stat -c %Y "$CACHE_FILE")
     AGE=$((CURRENT_TIME - FILE_TIME))
@@ -13,119 +27,105 @@ else
     AGE=999 
 fi
 
-# --- SLOW METRICS (Cached) ---
 if [ "$AGE" -ge "$CACHE_TIMEOUT" ]; then
-    # 1. Fetch Power Limits
-    #POWER_LIMITS=$(~/scripts/fedora-sway/config/waybar/scripts/power_status.sh | jq -r '.text' 2>/dev/null)
     POWER_LIMITS=$(~/scripts/fedora-sway/config/waybar/scripts/power_status.sh --tmux 2>/dev/null)
     
-    # 2. Fetch Network
     WIFI_IFACE=$(ls /sys/class/net | grep -m 1 -E '^wl')
     if [ -n "$WIFI_IFACE" ]; then
+        # Keeping awk here as iw output parsing is complex for pure bash
         NETWORK=$(iw dev "$WIFI_IFACE" link 2>/dev/null | awk -F': ' '
             /SSID/ {ssid=$2}
             /signal/ {
-                sub(/ dBm/, "", $2);
-                sig=2*($2+100);
-                if(sig>100) sig=100;
-                if(sig<0) sig=0;
+                sub(/ dBm/, "", $2); sig=2*($2+100);
+                if(sig>100) sig=100; if(sig<0) sig=0;
             }
             END {if (ssid) printf "%s (%d%%)", ssid, sig; else print "Disconnected"}
         ')
     else
         NETWORK="No Wi-Fi Interface"
     fi
-
-    # Save to cache separated by a pipe (|)
     echo "${POWER_LIMITS}|${NETWORK}" > "$CACHE_FILE"
 else
-    # Read variables instantly from the cache file
     IFS='|' read -r POWER_LIMITS NETWORK < "$CACHE_FILE"
 fi
 
-# --- FAST METRICS (Live) ---
+# --- FAST METRICS (Zero/Low Fork) ---
 
-# Battery Status & Icons
-BATT_LEVEL=$(cat /sys/class/power_supply/BAT1/capacity 2>/dev/null)
-BATT_STATUS=$(cat /sys/class/power_supply/BAT1/status 2>/dev/null)
+# Battery Status (Zero Fork)
+read -r BATT_LEVEL < /sys/class/power_supply/BAT1/capacity 2>/dev/null
+read -r BATT_STATUS < /sys/class/power_supply/BAT1/status 2>/dev/null
 
-if [[ "$BATT_STATUS" == "Not charging" ]]; then
-	BATT_STATUS=""
+if [ "$IS_TTY" -eq 1 ]; then
+    IC_BATT=""
+elif [[ "$BATT_STATUS" == "Not charging" ]]; then
+    IC_BATT=""
 elif [[ "$BATT_STATUS" == "Charging" ]]; then
-	BATT_STATUS=""
+    IC_BATT=""
 else
-	BATT_STATUS=""
+    IC_BATT=""
 fi
 
-# Battery Draw
-POWER_DRAW=$(awk '{if (NR==1) i=$1; else v=$1} END {printf("%.1fW", (i*v)/1000000000000)}' /sys/class/power_supply/BAT1/current_now /sys/class/power_supply/BAT1/voltage_now 2>/dev/null)
+# Battery Draw (1 Fork - integer math via bash to save awk)
+read -r BATT_VOLT < /sys/class/power_supply/BAT1/voltage_now 2>/dev/null
+read -r BATT_CURR < /sys/class/power_supply/BAT1/current_now 2>/dev/null
+if [ -n "$BATT_VOLT" ] && [ -n "$BATT_CURR" ]; then
+    # Bash does integer math natively. Result in Watts.
+    POWER_DRAW="$(( (BATT_VOLT / 1000) * (BATT_CURR / 1000) / 1000000 ))W"
+else
+    POWER_DRAW="0W"
+fi
 
-# Hardware 
-RAM=$(free -m | awk '/Mem:/ { printf("%.1f%% (%.1fGB)", $3/$2 * 100.0, $3/1024.0) }')
-#CPU_UTIL=$(top -bn1 | grep "Cpu(s)" | awk '{printf("%.1f%%", $2 + $4)}')
-CPU_TEMP=$(awk '{printf("%.1f°C", $1/1000)}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+# Hardware: RAM (Zero Fork - Bash native parsing)
+while read -r key value _; do
+    case "$key" in
+        MemTotal:) MEM_TOTAL=$value ;;
+        MemAvailable:) MEM_AVAIL=$value ;;
+    esac
+done < /proc/meminfo
+MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
+RAM="$((100 * MEM_USED / MEM_TOTAL))% ($((MEM_USED / 1024 / 1024))GB)"
 
-# Media
-#VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { print $2 }')
+# Hardware: Temp (Zero Fork)
+read -r TEMP_RAW < /sys/class/thermal/thermal_zone0/temp 2>/dev/null
+CPU_TEMP="$((TEMP_RAW / 1000))°C"
+
+# Hardware: CPU Utilization (Zero Fork, Cache-based Delta)
+read -r cpu user nice system idle iowait irq softirq steal _ < /proc/stat
+CUR_TOTAL=$((user + nice + system + idle + iowait + irq + softirq + steal))
+CUR_IDLE=$((idle + iowait))
+
+if [ -f "$CPU_CACHE_FILE" ]; then
+    read -r PREV_TOTAL PREV_IDLE < "$CPU_CACHE_FILE"
+else
+    PREV_TOTAL=0 PREV_IDLE=0
+fi
+
+echo "$CUR_TOTAL $CUR_IDLE" > "$CPU_CACHE_FILE"
+
+DIFF_TOTAL=$((CUR_TOTAL - PREV_TOTAL))
+DIFF_IDLE=$((CUR_IDLE - PREV_IDLE))
+
+if [ "$DIFF_TOTAL" -gt 0 ]; then
+    CPU_UTIL="$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL ))%"
+else
+    CPU_UTIL="0%"
+fi
+
+# Media (Required forks for hardware commands)
 VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { sub(/%/, "", $2); print $2 }')
 BACKLIGHT=$(brightnessctl -P g 2>/dev/null)
 
-
-#CPU Util efficient method
-# 1. Grab the first snapshot of CPU counters
-read -r cpu user nice system idle iowait irq softirq steal _ < /proc/stat
-TOTAL1=$((user + nice + system + idle + iowait + irq + softirq + steal))
-IDLE1=$((idle + iowait))
-
-# 2. Wait a tiny fraction of a second to establish a delta
-sleep 0.2
-
-# 3. Grab the second snapshot
-read -r cpu user nice system idle iowait irq softirq steal _ < /proc/stat
-TOTAL2=$((user + nice + system + idle + iowait + irq + softirq + steal))
-IDLE2=$((idle + iowait))
-
-# 4. Calculate the utilization percentage using awk for floating-point math
-CPU_UTIL=$(awk -v t1="$TOTAL1" -v t2="$TOTAL2" -v i1="$IDLE1" -v i2="$IDLE2" '
-  BEGIN {
-    total = t2 - t1;
-    idle = i2 - i1;
-    if (total > 0) printf("%.1f%%", 100 * (total - idle) / total);
-    else print "0.0%";
-  }
-')
-
 # --- Final Output ---
-FULL_OUTPUT="|  $RAM |  $CPU_UTIL  $CPU_TEMP | $BATT_STATUS $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% |  $NETWORK |  $VOL% | 💡$BACKLIGHT% |"
+FULL_OUTPUT="| $IC_MENU $RAM | $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP | $IC_BATT $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% | $IC_WIFI $NETWORK | $IC_VOL $VOL% | $IC_LGT $BACKLIGHT% |"
 
-# Detect if current client run context is a raw TTY
-IS_TTY=0
-if [ "$1" = "tty" ] || [ "$TERM" = "linux" ]; then
-    IS_TTY=1
-fi
+# Strip extra spaces if TTY mode cleared icons
+FULL_OUTPUT=$(echo "$FULL_OUTPUT" | tr -s ' ')
 
-if [ "$IS_TTY" -eq 1 ]; then
-    # Get the width of the linux client
-    WIDTH=$(tmux list-clients -F '#{client_width} #{client_termname}' 2>/dev/null | grep 'linux$' | awk '{print $1}' | sort -n | head -n1)
-else
-    # Get the width of the non-linux client(s)
-    WIDTH=$(tmux list-clients -F '#{client_width} #{client_termname}' 2>/dev/null | grep -v 'linux$' | awk '{print $1}' | sort -n | head -n1)
-fi
-
-# Fallback if WIDTH is empty
-if [ -z "$WIDTH" ]; then
-    WIDTH=$(tmux list-clients -F '#{client_width}' 2>/dev/null | sort -n | head -n1)
-fi
-
-if [ -n "$WIDTH" ] && [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
-    COMPACT_OUTPUT="$POWER_LIMITS  $NETWORK  $VOL 💡$BACKLIGHT  $RAM  $CPU_UTIL  $CPU_TEMP $BATT_STATUS $BATT_LEVEL% $POWER_DRAW"
-    FINAL_OUT="$COMPACT_OUTPUT"
+if [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
+    COMPACT_OUTPUT="$POWER_LIMITS $IC_WIFI $NETWORK $IC_VOL $VOL% $IC_LGT $BACKLIGHT% $IC_MENU $RAM $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP $IC_BATT $BATT_LEVEL% $POWER_DRAW"
+    FINAL_OUT=$(echo "$COMPACT_OUTPUT" | tr -s ' ')
 else
     FINAL_OUT="$FULL_OUTPUT"
 fi
 
-if [ "$IS_TTY" -eq 1 ]; then
-    echo "$FINAL_OUT" | perl -pe 's/[^\x00-\x7F]//g'
-else
-    echo "$FINAL_OUT"
-fi
+echo "$FINAL_OUT"
