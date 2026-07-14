@@ -4,6 +4,7 @@
 NOTIFY_PORT=10000
 #HOST="GLMACM1492118.local"
 HOST="pa3k.local"
+MAC_ADDR="A0:9A:8E:6F:87:05"
 RETRY=1
 
 # Parse arguments
@@ -87,19 +88,33 @@ while [ $RETRY -eq 1 ]; do
 
     # Using ssh directly (autossh is redundant since we have a loop and it handles signals poorly)
     if [ "$NON_INTERACTIVE" -eq 1 ]; then
-        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
+        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
         SSH_PID=$!
         wait $SSH_PID
         EXIT_CODE=$?
         SSH_PID=""
     else
-        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
+        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
         EXIT_CODE=$?
     fi
 
     # If the process was interrupted (SIGINT is 130, etc.) or retry was disabled by trap
-    if [ $EXIT_CODE -gt 128 ] || [ $RETRY -eq 0 ]; then
+    # Note: 255 is SSH connection error (not a standard signal), so we do not break on 255.
+    if { [ $EXIT_CODE -gt 128 ] && [ $EXIT_CODE -ne 255 ]; } || [ $RETRY -eq 0 ]; then
         break
+    fi
+
+    if [ $EXIT_CODE -eq 255 ]; then
+        if [ -n "$MAC_ADDR" ]; then
+            echo "Connection failed (exit code 255). Attempting to wake up $HOST via Wake on LAN ($MAC_ADDR)..."
+            if command -v wol &> /dev/null; then
+                wol "$MAC_ADDR"
+            else
+                echo "Error: 'wol' command not found. Cannot send Wake on LAN magic packet."
+            fi
+        else
+            echo "Connection failed (exit code 255) and MAC address file not found."
+        fi
     fi
 
     echo "Connection lost or closed. Retrying in 5 seconds..."
