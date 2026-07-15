@@ -231,7 +231,7 @@ input "type:touchpad" {
     natural_scroll enabled
     #scroll_factor 0.5
     accel_profile "adaptive"
-    pointer_accel 0.5
+    pointer_accel 0.3
     drag_lock disabled
 }
 

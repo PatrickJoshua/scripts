@@ -82,7 +82,7 @@ input "type:touchpad" {
     dwt enabled
     natural_scroll enabled
     accel_profile "adaptive"
-    pointer_accel 0.5
+    pointer_accel 0.3
     drag_lock disabled
 }
 
