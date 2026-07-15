@@ -329,6 +329,6 @@ exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK
 exec systemctl --user start sway-session.service
 
 # Set initial mode on startup based on time
-#exec_always ~/scripts/mode-check.sh
+exec ~/scripts/fedora-sway/mode-check.sh
 
 include '$(/usr/libexec/sway/layered-include "/usr/share/sway/config.d/*.conf" "/etc/sway/config.d/*.conf" "${XDG_CONFIG_HOME:-$HOME/.config}/sway/config.d/*.conf")'

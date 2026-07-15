@@ -117,3 +117,6 @@ exec ~/.local/bin/microsoft-edge
 
 # Start systemd graphical session target via sway-session.service
 exec systemctl --user start sway-session.service
+
+# Set initial mode on startup based on time
+exec ~/scripts/fedora-sway/mode-check.sh
