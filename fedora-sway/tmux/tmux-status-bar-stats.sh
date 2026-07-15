@@ -120,7 +120,7 @@ VOL=$(amixer get Master | awk -F'[][]' '/Left:/ { sub(/%/, "", $2); print $2 }')
 BACKLIGHT=$(brightnessctl -P g 2>/dev/null)
 
 # --- Final Output ---
-FULL_OUTPUT="| $IC_MENU $RAM | $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP | $IC_BATT $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% | $IC_WIFI $NETWORK | $IC_VOL $VOL% | $IC_LGT $BACKLIGHT% |"
+FULL_OUTPUT="| $IC_MENU $RAM | $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP | $IC_BATT $BATT_LEVEL% $POWER_DRAW | $POWER_LIMITS% | $IC_WIFI $NETWORK | $IC_VOL $VOL% | $IC_LGT$BACKLIGHT% |"
 
 # Strip extra spaces if TTY mode cleared icons
 FULL_OUTPUT=$(echo "$FULL_OUTPUT" | tr -s ' ')
