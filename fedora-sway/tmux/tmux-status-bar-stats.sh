@@ -34,7 +34,11 @@ if [ "$AGE" -ge "$CACHE_TIMEOUT" ]; then
     if [ -n "$WIFI_IFACE" ]; then
         # Keeping awk here as iw output parsing is complex for pure bash
         NETWORK=$(iw dev "$WIFI_IFACE" link 2>/dev/null | awk -F': ' '
-            /SSID/ {ssid=$2}
+            /SSID/ {
+                ssid=$2;
+                sub(/^_owetm_/, "", ssid);
+                sub(/[0-9]+$/, "", ssid);
+            }
             /signal/ {
                 sub(/ dBm/, "", $2); sig=2*($2+100);
                 if(sig>100) sig=100; if(sig<0) sig=0;
@@ -126,6 +130,12 @@ if [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
     FINAL_OUT=$(echo "$COMPACT_OUTPUT" | tr -s ' ')
 else
     FINAL_OUT="$FULL_OUTPUT"
+fi
+
+# Strip non-ASCII/special characters in raw TTY mode to prevent status bar duplication in tmux
+if [ "$IS_TTY" -eq 1 ]; then
+    LC_ALL=C
+    FINAL_OUT="${FINAL_OUT//[^ -~]/}"
 fi
 
 echo "$FINAL_OUT"
