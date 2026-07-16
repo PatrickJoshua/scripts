@@ -125,7 +125,7 @@ FULL_OUTPUT="| $IC_MENU $RAM | $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP | $IC_BATT $
 # Strip extra spaces if TTY mode cleared icons
 FULL_OUTPUT=$(echo "$FULL_OUTPUT" | tr -s ' ')
 
-if [ "$((WIDTH - 10))" -lt "${#FULL_OUTPUT}" ]; then
+if [ "$((WIDTH - 16 - 4))" -lt "${#FULL_OUTPUT}" ]; then
     NETWORK_COMPACT="${NETWORK% (*)}"
     if [ "$NETWORK_COMPACT" = "Disconnected" ]; then
         NETWORK_COMPACT="✗"
