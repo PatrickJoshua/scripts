@@ -1,3 +1,9 @@
+# Configure keyboard to use the custom layout for the MSI Mod4 key
+input "type:keyboard" {
+    xkb_layout "custom"
+    xkb_variant "msi_mod"
+}
+
 # Then ensure your $mod variable is set to Mod4
 set $mod Mod4
 
@@ -81,9 +87,17 @@ input "type:touchpad" {
     tap enabled
     dwt enabled
     natural_scroll enabled
-    accel_profile "adaptive"
-    pointer_accel 0.3
+    #accel_profile "adaptive"
+    #pointer_accel 0.2
     drag_lock disabled
+    
+    accel_profile custom
+    
+    # Defines the gap in input speed (X-axis) between each point
+    accel_step 0.5
+    
+    # Defines the output multiplier (Y-axis) at each speed step
+    accel_points 0.0 0.5 1.5 4.0 8.0
 }
 
 output * scale 1

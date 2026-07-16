@@ -14,6 +14,12 @@
 # Alternative "force" method if the above doesn't work:
 bindcode 65514 modifier_add Mod4
 
+# Configure keyboard to use the custom layout for the MSI Mod4 key
+input "type:keyboard" {
+    xkb_layout "custom"
+    xkb_variant "msi_mod"
+}
+
 # Then ensure your $mod variable is set to Mod4
 set $mod Mod4
 
