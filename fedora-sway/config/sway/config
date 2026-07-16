@@ -107,6 +107,14 @@ exec_always "sleep 1 && [ -f ~/Pictures/BingWallpapers/bing-latest.jpg ] && sway
     # mouse button for dragging.
     floating_modifier $mod normal
 
+# Resize windows by holding $mod and scrolling (two-finger scroll on trackpad or scroll wheel) anywhere inside the window
+# - Vertical scroll (button4/button5) adjusts height
+# - Horizontal scroll (button6/button7) adjusts width
+bindsym --whole-window $mod+button4 resize grow height 1px
+bindsym --whole-window $mod+button5 resize shrink height 1px
+bindsym --whole-window $mod+button6 resize shrink width 1px
+bindsym --whole-window $mod+button7 resize grow width 1px
+
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 

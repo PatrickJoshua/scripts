@@ -8,6 +8,7 @@ input "type:keyboard" {
 set $mod Mod4
 
 include /usr/share/sway/config.d/60-bindings-volume.conf
+include /usr/share/sway/config.d/60-bindings-brightness.conf
 
 set $term foot
 set $rofi_cmd rofi \
@@ -29,6 +30,14 @@ set $menu $rofi_cmd -show combi -combi-modes "window,drun,run,ssh,combi"
 
 # Others
 floating_modifier $mod normal
+
+# Resize windows by holding $mod and scrolling (two-finger scroll on trackpad or scroll wheel) anywhere inside the window
+# - Vertical scroll (button4/button5) adjusts height
+# - Horizontal scroll (button6/button7) adjusts width
+bindsym --whole-window $mod+button4 resize grow height 1px
+bindsym --whole-window $mod+button5 resize shrink height 1px
+bindsym --whole-window $mod+button6 resize shrink width 1px
+bindsym --whole-window $mod+button7 resize grow width 1px
 
     # Move your focus around
     bindsym $mod+Left focus left
@@ -103,6 +112,9 @@ input "type:touchpad" {
 output * scale 1
 output * bg #000000 solid_color
 gaps inner 0
+
+# Completely edge-to-edge windows (0px border). No pixels are wasted between windows.
+# Resize tiling/floating windows by holding $mod (Super) and Right-Click dragging anywhere inside the window.
 default_border none
 default_floating_border none
 
