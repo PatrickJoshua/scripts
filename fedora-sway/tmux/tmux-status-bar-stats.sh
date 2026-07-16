@@ -125,12 +125,15 @@ FULL_OUTPUT="| $IC_MENU $RAM | $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP | $IC_BATT $
 # Strip extra spaces if TTY mode cleared icons
 FULL_OUTPUT=$(echo "$FULL_OUTPUT" | tr -s ' ')
 
-if [ "$((WIDTH - 30))" -lt "${#FULL_OUTPUT}" ]; then
+if [ "$((WIDTH - 10))" -lt "${#FULL_OUTPUT}" ]; then
     NETWORK_COMPACT="${NETWORK% (*)}"
-    if [[ "$NETWORK_COMPACT" != "Disconnected" && "$NETWORK_COMPACT" != "No Wi-Fi Interface" ]]; then
+    if [ "$NETWORK_COMPACT" = "Disconnected" ]; then
+        NETWORK_COMPACT="✗"
+    elif [ "$NETWORK_COMPACT" != "No Wi-Fi Interface" ]; then
         NETWORK_COMPACT="${NETWORK_COMPACT:0:3}"
     fi
-    COMPACT_OUTPUT="$POWER_LIMITS $IC_WIFI $NETWORK_COMPACT $IC_VOL $VOL% $IC_LGT$BACKLIGHT% $IC_MENU $RAM $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP $IC_BATT $BATT_LEVEL% $POWER_DRAW"
+    RAM_COMPACT="${RAM//[()]/}"
+    COMPACT_OUTPUT="$POWER_LIMITS $IC_WIFI $NETWORK_COMPACT $IC_VOL $VOL% $IC_LGT$BACKLIGHT% $IC_MENU $RAM_COMPACT $IC_CPU $CPU_UTIL $IC_TEMP $CPU_TEMP $IC_BATT $BATT_LEVEL% $POWER_DRAW"
     FINAL_OUT=$(echo "$COMPACT_OUTPUT" | tr -s ' ')
 else
     FINAL_OUT="$FULL_OUTPUT"
