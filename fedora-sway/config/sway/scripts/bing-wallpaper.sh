@@ -134,26 +134,44 @@ else
         done
         
         if [ "$DOWNLOAD_SUCCESS" = true ]; then
-            # Compare checksum with all of today's wallpapers to avoid duplicates
+            # Calculate SHA-256 hash of the newly downloaded image
             NEW_HASH=$(sha256sum "$TEMP_SAVE_PATH" | awk '{print $1}')
             MATCHED_WP=""
-            shopt -s nullglob
-            for f in "$WP_DIR/bing-$TODAY"*.jpg; do
-                if [ -f "$f" ] && [ "$f" != "$TEMP_SAVE_PATH" ]; then
-                    OLD_HASH=$(sha256sum "$f" | awk '{print $1}')
-                    if [ "$NEW_HASH" = "$OLD_HASH" ]; then
-                        MATCHED_WP="$f"
-                        break
-                    fi
+            
+            # 1. First compare checksum with the latest wallpaper (yesterday's latest)
+            LATEST_WP=$(readlink -f "$WP_DIR/bing-latest.jpg")
+            if [ -n "$LATEST_WP" ] && [ -f "$LATEST_WP" ]; then
+                LATEST_HASH=$(sha256sum "$LATEST_WP" | awk '{print $1}')
+                if [ "$NEW_HASH" = "$LATEST_HASH" ]; then
+                    MATCHED_WP="$LATEST_WP"
                 fi
-            done
+            fi
+            
+            # 2. If not matched, compare with any of today's wallpapers to avoid duplicates
+            if [ -z "$MATCHED_WP" ]; then
+                shopt -s nullglob
+                for f in "$WP_DIR/bing-$TODAY"*.jpg; do
+                    if [ -f "$f" ] && [ "$f" != "$TEMP_SAVE_PATH" ]; then
+                        OLD_HASH=$(sha256sum "$f" | awk '{print $1}')
+                        if [ "$NEW_HASH" = "$OLD_HASH" ]; then
+                            MATCHED_WP="$f"
+                            break
+                        fi
+                    fi
+                done
+            fi
 
             if [ -n "$MATCHED_WP" ]; then
-                echo "Downloaded wallpaper is identical to an existing wallpaper for today ($MATCHED_WP). Skipping update."
+                echo "Downloaded wallpaper is identical to an existing wallpaper ($MATCHED_WP). Skipping update."
                 rm -f "$TEMP_SAVE_PATH"
+                # Create a hard link for today's date pointing to the matched wallpaper
+                # only if today's file doesn't already exist or if we want to ensure it is linked
+                if [ "$TARGET_PATH" != "$MATCHED_WP" ]; then
+                    ln -f "$MATCHED_WP" "$TARGET_PATH"
+                fi
                 # Update the symlink pointing to today's matched wallpaper
-                ln -sf "$MATCHED_WP" "$WP_DIR/bing-latest.jpg"
-                SAVE_PATH="$MATCHED_WP"
+                ln -sf "$TARGET_PATH" "$WP_DIR/bing-latest.jpg"
+                SAVE_PATH="$TARGET_PATH"
                 # Always apply the wallpaper to all outputs if the file exists
                 if [ -f "$SAVE_PATH" ] && [ -n "$SWAYSOCK" ]; then
                     swaymsg "output * bg $SAVE_PATH fill"
