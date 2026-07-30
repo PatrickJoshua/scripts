@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Auto-detect active Sway IPC socket if SWAYSOCK is unset or points to a stale socket
+if [ -z "$SWAYSOCK" ] || [ ! -S "$SWAYSOCK" ]; then
+    ACTIVE_SOCK=$(ls -t /run/user/$(id -u)/sway-ipc.*.sock 2>/dev/null | head -n1)
+    if [ -S "$ACTIVE_SOCK" ]; then
+        export SWAYSOCK="$ACTIVE_SOCK"
+        echo "[i] Auto-detected active SWAYSOCK: $SWAYSOCK"
+    fi
+fi
+
 # Initialize proxy tracking variables
 BYEDPI_STARTED=0
 WAS_PROXY_CONFIGURED=0
@@ -290,6 +299,10 @@ if [ "$CREATE_HEADLESS" -eq 1 ]; then
                 # Fallback to custom mode if resolution fails
                 swaymsg output "$HEADLESS_OUTPUT" mode --custom "${HEADLESS_RES}@60Hz" >/dev/null 2>&1 || true
             fi
+            
+            # Set headless output background to solid black
+            echo "[i] Setting background of $HEADLESS_OUTPUT to solid black..."
+            swaymsg output "$HEADLESS_OUTPUT" bg "#000000" solid_color >/dev/null 2>&1 || true
             
             # Conditionally disable other physical outputs if requested
             if [ "$TERMINATE_PHYSICAL" -eq 1 ]; then
