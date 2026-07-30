@@ -216,7 +216,18 @@ while true; do
         # Send notification to the SSH client
         # Only send if this isn't the first pass (PREV_POWER_SOURCE will be empty on first pass)
         if [ $SCRIPT_INITIALIZED -eq 1 ] && [ -n "$PREV_POWER_SOURCE" ]; then
-            send_notification "$MSG"
+            # Only send notification if battery percentage goes down or stays the same, ignore if it is incremented
+            SHOULD_NOTIFY=1
+            if [ -n "$PREV_BATT_PCT" ] && [ -n "$BATT_PCT" ]; then
+                if [[ "$BATT_PCT" =~ ^[0-9]+$ ]] && [[ "$PREV_BATT_PCT" =~ ^[0-9]+$ ]]; then
+                    if [ "$BATT_PCT" -gt "$PREV_BATT_PCT" ]; then
+                        SHOULD_NOTIFY=0
+                    fi
+                fi
+            fi
+            if [ $SHOULD_NOTIFY -eq 1 ]; then
+                send_notification "$MSG"
+            fi
         fi
         
         PREV_POWER_SOURCE="$POWER_SOURCE"
