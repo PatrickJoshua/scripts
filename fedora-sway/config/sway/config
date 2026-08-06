@@ -279,8 +279,8 @@ bindgesture swipe:3:down  focus mode_toggle
 # Take a screenshot of the entire screen and save to clipboard
 bindsym Shift+Print exec grim  -g "$(slurp)" - | wl-copy
 
-bindsym Shift+XF86MonBrightnessUp exec brightnessctl set +1%
-bindsym Shift+XF86MonBrightnessDown exec brightnessctl set 1%-
+bindsym Shift+XF86MonBrightnessUp exec brightnessctl set +1
+bindsym Shift+XF86MonBrightnessDown exec brightnessctl set 1-
 
 bindsym $mod+alt+e exec microsoft-edge
 bindsym $mod+ctrl+Shift+s exec systemctl suspend
