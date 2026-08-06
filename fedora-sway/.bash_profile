@@ -48,7 +48,10 @@ if [ "$(tty)" = "/dev/tty1" ]; then
         # Key '2' was pressed; execute swedge
         exec swedge
     elif [ "$key" = "3" ]; then
-        # Key '3' was pressed; execute sway with VNC config
+        # Key '3' was pressed; validate sudo credentials interactively first
+        echo "Validating sudo credentials for Tailscale/VNC setup..."
+        sudo -v
+        # Execute sway with VNC config
         exec sway -c ~/.config/sway/config.vnc
     else
         # Any other key was pressed; cancel autostart and drop to normal bash shell
