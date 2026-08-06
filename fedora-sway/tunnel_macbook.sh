@@ -88,13 +88,13 @@ while [ $RETRY -eq 1 ]; do
 
     # Using ssh directly (autossh is redundant since we have a loop and it handles signals poorly)
     if [ "$NON_INTERACTIVE" -eq 1 ]; then
-        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
+        ssh -tt -D 8080 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit" < /dev/null &
         SSH_PID=$!
         wait $SSH_PID
         EXIT_CODE=$?
         SSH_PID=""
     else
-        ssh -tt -D 8080 -L 5900:localhost:5900 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
+        ssh -tt -D 8080 -R $NOTIFY_PORT:localhost:$NOTIFY_PORT -c chacha20-poly1305@openssh.com -o "ConnectTimeout=3" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 300" "a10017780@$HOST" "echo '[][]' | sudo -S ~/Desktop/scripts/disable-sleep.sh $SCRIPT_ARGS ; exit"
         EXIT_CODE=$?
     fi
 
