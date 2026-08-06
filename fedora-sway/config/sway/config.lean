@@ -79,6 +79,11 @@ bindsym --whole-window $mod+button7 resize grow width 1px
     # Swap focus between the tiling area and the floating area
     bindsym $mod+space focus mode_toggle
 
+    # Clipboard history
+    exec wl-paste --watch cliphist store
+    exec wl-paste --type image --watch cliphist store
+    bindsym $mod+v exec cliphist list | rofi -dmenu | cliphist decode | wl-copy
+
 mode "resize" {
     bindsym Left resize shrink width 10px
     bindsym Down resize grow height 10px
