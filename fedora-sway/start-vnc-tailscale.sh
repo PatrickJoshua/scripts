@@ -20,8 +20,18 @@ HEADLESS_RES="1638x639"
 HEADLESS_OUTPUT=""
 declare -a DISABLED_OUTPUTS=()
 
-# Prompt to create a HEADLESS display and configure options
-if [ -t 0 ] || [ -c /dev/tty ]; then
+# Parse optional command-line flags
+for arg in "$@"; do
+    case "$arg" in
+        --headless)
+            CREATE_HEADLESS=1
+            TERMINATE_PHYSICAL=0
+            ;;
+    esac
+done
+
+# Prompt to create a HEADLESS display and configure options if not already set and running in interactive terminal
+if [ "$CREATE_HEADLESS" -eq 0 ] && { [ -t 0 ] || [ -c /dev/tty ]; }; then
     read -p "Create a HEADLESS display on Sway? [Y/n]: " create_hl < /dev/tty
     create_hl=${create_hl:-y}
     if [[ "$create_hl" =~ ^[Yy]$ ]]; then

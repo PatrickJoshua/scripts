@@ -14,7 +14,7 @@ export PATH="/home/pa3k/.local/bin:$PATH"
 # Autostart sway or swedge on tty1
 if [ "$(tty)" = "/dev/tty1" ]; then
     # Inform the user of their choices, how to cancel, and the automatic default timeout
-    echo "Autostart: Press (1) for sway, (2) for swedge. Any other key to cancel. Defaulting to sway in 30 seconds."
+    echo "Autostart: Press (1) for sway, (2) for swedge, (3) for sway with VNC. Any other key to cancel. Defaulting to sway in 30 seconds."
     
     timeout=30
     key=""
@@ -47,6 +47,9 @@ if [ "$(tty)" = "/dev/tty1" ]; then
     elif [ "$key" = "2" ]; then
         # Key '2' was pressed; execute swedge
         exec swedge
+    elif [ "$key" = "3" ]; then
+        # Key '3' was pressed; execute sway with VNC config
+        exec sway -c ~/.config/sway/config.vnc
     else
         # Any other key was pressed; cancel autostart and drop to normal bash shell
         echo "Autostart cancelled. Returning to shell."
