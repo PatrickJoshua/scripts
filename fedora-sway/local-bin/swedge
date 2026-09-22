@@ -2,6 +2,11 @@
 # Ensure a clean state by stopping any existing sway-session.service
 systemctl --user stop sway-session.service 2>/dev/null
 
+# Detect power source: if on battery (any online status is 0)
+if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then
+    export SWAY_ON_BATTERY=1
+fi
+
 sway -c ~/.config/sway/config.lean
 
 # Stop the sway-session.service when sway exits

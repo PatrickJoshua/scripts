@@ -21,6 +21,16 @@ set $menu $rofi_cmd -show combi -combi-modes "window,drun,run,ssh,combi"
     # Start your launcher
     bindsym $mod+d exec $menu
     bindsym $mod+x exec rofi -show custom -modi "custom:~/.config/sway/rofi-cmd.sh"
+
+    bindsym $mod+t exec $term
+    # Binding for floating foot launch
+    for_window [app_id="foot-float"] floating enable
+    
+    # Enable Ctrl+Shift+t to launch a floating foot
+    bindsym $mod+Shift+t exec $term --app-id='foot-float'
+
+    bindsym $mod+alt+e exec microsoft-edge
+
     
     # Reload the configuration file
     bindsym $mod+Shift+c reload
@@ -131,13 +141,13 @@ xwayland disable
 
 # swayidle
 exec swayidle -w \
-    timeout 60 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then swaymsg "output * power off"; fi' \
+    timeout 30 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then swaymsg "output * power off"; fi' \
     resume 'swaymsg "output * power on"' \
     timeout 300 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then systemctl suspend; else swaymsg "output * power off"; fi' \
     timeout 18000 'if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then systemctl suspend; fi' \
 
 # Minimal Keyring and Polkit initialization
-exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway SWAY_ON_BATTERY
 #exec /usr/libexec/lxqt-policykit-agent
 exec gnome-keyring-daemon --start --components=secrets
 

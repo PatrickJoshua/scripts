@@ -3,12 +3,13 @@
 # 2. Disable Vulkan (Stability)
 # 3. Enable VA-API (Battery-saving video)
 /usr/bin/microsoft-edge \
-  --enable-features=UseOzonePlatform,VaapiVideoDecoder,WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation \
+  --enable-features=UseOzonePlatform,VaapiVideoDecoder,WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation,UseEcoQosForBackgroundProcess \
   --ozone-platform=wayland \
   --disable-features=WaylandFractionalScaleV1,Vulkan,VulkanFromANGLE,DefaultANGLEVulkan \
   --disable-dev-shm-usage \
   --disable-vulkan \
-  --password-store=gnome-libsecret \
   "$@"
 #  --use-angle=opengl \
 #  --use-gl=egl-angle \
+#  --password-store=gnome-libsecret \
+#  --force-device-scale-factor=0.8 \
