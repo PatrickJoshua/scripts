@@ -14,7 +14,7 @@ export PATH="/home/pa3k/.local/bin:$PATH"
 # Autostart sway or swedge on tty1
 if [ "$(tty)" = "/dev/tty1" ]; then
     # Inform the user of their choices, how to cancel, and the automatic default timeout
-    echo "Autostart: Press (1) for swedge, (2) for sway, (3) for swedge (manual), (4) for sway with VNC. Any other key to cancel. Defaulting to swedge in 10 seconds."
+    echo "Autostart: Press (1) for swedge, (2) for sway, (3) for sway with VNC. Any other key to cancel. Defaulting to swedge in 10 seconds."
     
     timeout=10
     key=""
@@ -48,10 +48,7 @@ if [ "$(tty)" = "/dev/tty1" ]; then
         # Key '2' was pressed; execute sway
         exec sway
     elif [ "$key" = "3" ]; then
-        # Key '3' was pressed; execute swedge
-        exec swedge
-    elif [ "$key" = "4" ]; then
-        # Key '4' was pressed; validate sudo credentials interactively first
+        # Key '3' was pressed; validate sudo credentials interactively first
         echo "Validating sudo credentials for Tailscale/VNC setup..."
         sudo -v
         # Execute sway with VNC config
