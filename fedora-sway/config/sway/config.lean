@@ -139,6 +139,13 @@ for_window [app_id="^$" title="^$"] floating enable, no_focus, border none
 
 xwayland disable
 
+# Define the laptop display
+#set $laptop eDP-1
+
+# Disable the laptop screen when the lid is closed, enable when open
+#bindswitch --reload --locked lid:on output $laptop disable
+#bindswitch --reload --locked lid:off output $laptop enable
+
 # swayidle
 exec swayidle -w \
     timeout 30 'if grep -q "0" /sys/class/power_supply/*/online 2>/dev/null; then swaymsg "output * power off"; fi' \
