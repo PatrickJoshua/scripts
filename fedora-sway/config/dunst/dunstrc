@@ -536,3 +536,26 @@
     background = "#af4cab" 
     #"#4CAF50"
     foreground = "#ffffff"
+
+[Persistent_Meeting_Notifications]
+    # Match meeting and war room call invitations (e.g. Workspace Studio "Join now")
+    summary = "*Join now*"
+
+    # Match notification body (e.g. "Sent by Workspace Studio")
+    # body = "*Workspace Studio*"
+
+    # 1. Forcefully override Edge's 25-second D-Bus timeout with 0 (infinite)
+    override_dbus_timeout = 0
+    
+    # 2. Strip the transient flag so it respects your rules
+    set_transient = no
+ 
+    # Override Edge's explicit 25-second timeout request
+    timeout = 0
+
+    # Escalate the notification to CRITICAL urgency
+    urgency = critical
+    
+    # Change the background color so you know it requires action
+    background = "#af4cab" 
+    foreground = "#ffffff"
