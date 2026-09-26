@@ -52,17 +52,25 @@ fi
 
 # Detect current power source and apply the appropriate limit and TuneD profile
 if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then
-    # Currently on AC Mode -> always 100% and throughput-performance
-    echo "100" > "$PSTATE_FILE"
+    # Currently on AC Mode -> always throughput-performance and 100%
     tuned-adm profile throughput-performance 2>/dev/null || tuned-adm profile balanced
+    echo "100" > "$PSTATE_FILE"
+    if [[ -d "/sys/devices/platform/msi-ec" ]]; then
+        echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+    fi
     echo "System is currently on AC power. Applied 100% (uncapped) CPU limit and 'throughput-performance' TuneD profile."
 else
-    # Currently on Battery Mode -> apply user's desired cap and switch to non-blocking profile (balanced or powersave)
-    echo "$VALUE" > "$PSTATE_FILE"
+    # Currently on Battery Mode -> switch to non-blocking profile (balanced or powersave) first, then apply user's desired cap
     if (( VALUE >= 40 )); then
         tuned-adm profile balanced
     else
         tuned-adm profile powersave
+    fi
+    echo "$VALUE" > "$PSTATE_FILE"
+    if [[ -d "/sys/devices/platform/msi-ec" ]]; then
+        echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
     echo "System is currently on Battery. Applied $VALUE% CPU cap and synchronized TuneD profile."
 fi

@@ -41,6 +41,12 @@ if [ "$1" == "bat" ]; then
         # Apply battery CPU limit
         echo "$BAT_CAP" > "$PSTATE_FILE"
     fi
+
+    # Set MSI EC fan profile to silent / super_battery for quiet / 0-RPM operation
+    if [[ -d "/sys/devices/platform/msi-ec" ]]; then
+        echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+    fi
     
     # Update tmux to ultra battery-saving mode (5 minutes)
     update_tmux 300 "5m"
@@ -55,6 +61,12 @@ elif [ "$1" == "ac" ]; then
     fi
     # Switch TuneD profile to high performance on AC
     tuned-adm profile throughput-performance 2>/dev/null || tuned-adm profile balanced
+
+    # Restore MSI EC fan profile to balanced / auto
+    if [[ -d "/sys/devices/platform/msi-ec" ]]; then
+        echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+    fi
     
     # Update tmux to performance mode (2 seconds)
     update_tmux 2 "2s"
