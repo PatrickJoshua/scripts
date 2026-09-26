@@ -265,6 +265,11 @@ default_border pixel 1
     #mode hide
 #}
 
+# Touchpad gestures
+# 4-finger swipe left/right to move workspace
+bindgesture swipe:4:right workspace prev
+bindgesture swipe:4:left  workspace next
+
 # Corrected: <gesture>:<fingers>:<direction>
 bindgesture swipe:3:right workspace next
 bindgesture swipe:3:left  workspace prev

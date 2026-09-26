@@ -124,6 +124,11 @@ input "type:touchpad" {
     accel_points 0.0 0.5 1.5 4.0 8.0
 }
 
+# Touchpad gestures
+# 4-finger swipe left/right to move workspace
+bindgesture swipe:4:right workspace prev
+bindgesture swipe:4:left  workspace next
+
 output * scale 1
 output * bg #000000 solid_color
 gaps inner 0
