@@ -46,7 +46,7 @@ sudo git clone https://github.com/timschneeb/msi-ec-modern.git /usr/src/msi-ec-m
 cd /usr/src/msi-ec-modern
 ```
 
-In Linux kernel 6.11 and newer, the `platform_driver.remove` callback signature changed from returning `int` to `void`. Apply this patch to `msi-ec.c`:
+In Linux kernel 6.11 and newer, the `platform_driver.remove` callback signature changed from returning `int` to `void`. Additionally, to prevent power preset transitions (`super_battery` on battery, `balanced` on AC) from altering user-defined keyboard lighting, skip writing to `MSI_EC_PRESET_COLUMN_KBD_BL`. Apply these patches to `msi-ec.c`:
 
 ```c
 #include <linux/version.h>
@@ -63,6 +63,15 @@ static int msi_platform_remove(struct platform_device *pdev)
         return 0;
 }
 #endif
+
+/* Inside preset_store(): Preserve keyboard backlight level across power preset changes */
+for (c = 0; c < ARRAY_SIZE(MSI_EC_PRESET_MEMORY_TABLE); c++) {
+        u8 addr = MSI_EC_PRESET_MEMORY_TABLE[c];
+        u8 value = MSI_EC_PRESET_VALUE_TABLE[index][c];
+
+        // Do not override keyboard backlight brightness on preset changes
+        if (c == MSI_EC_PRESET_COLUMN_KBD_BL)
+                continue;
 ```
 
 ### 2.3. Build, Install, and Prioritize Module
