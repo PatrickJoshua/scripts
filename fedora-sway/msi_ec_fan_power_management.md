@@ -48,7 +48,11 @@ sudo git clone https://github.com/timschneeb/msi-ec-modern.git /usr/src/msi-ec-m
 cd /usr/src/msi-ec-modern
 ```
 
-In Linux kernel 6.11 and newer, the `platform_driver.remove` callback signature changed from returning `int` to `void`. Additionally, to prevent power preset transitions (`super_battery` on battery, `balanced` on AC) from altering user-defined keyboard lighting, skip writing to `MSI_EC_PRESET_COLUMN_KBD_BL`. Apply these patches to `msi-ec.c`:
+In Linux kernel 6.11 and newer, the `platform_driver.remove` callback signature changed from returning `int` to `void`. Additionally:
+* **Keyboard Backlight Preservation:** To prevent power preset transitions (`super_battery` on battery, `balanced` on AC) from altering user-defined keyboard lighting, skip writing to `MSI_EC_PRESET_COLUMN_KBD_BL`.
+* **Battery Charge Thresholds (`charge_control_end_threshold`):** Register an ACPI battery hook with `battery_hook_register()` targeting EC register `0xD7` (offset `0x80` for end threshold) to retain `/sys/class/power_supply/BAT1/charge_control_end_threshold` for battery charge limiting.
+
+Apply these patches to `msi-ec.c`:
 
 ```c
 #include <linux/version.h>
@@ -74,6 +78,65 @@ for (c = 0; c < ARRAY_SIZE(MSI_EC_PRESET_MEMORY_TABLE); c++) {
         // Do not override keyboard backlight brightness on preset changes
         if (c == MSI_EC_PRESET_COLUMN_KBD_BL)
                 continue;
+}
+
+/* Battery Hook for /sys/class/power_supply/BAT1/charge_control_end_threshold */
+#define MSI_EC_BATTERY_CHARGE_CONTROL_ADDRESS 0xd7
+#define MSI_EC_BATTERY_OFFSET_END 0x80
+#define MSI_EC_BATTERY_OFFSET_START 0x8a
+#define MSI_EC_BATTERY_RANGE_MIN 0x8a
+#define MSI_EC_BATTERY_RANGE_MAX 0xe4
+
+static ssize_t charge_control_end_threshold_show(struct device *device,
+                                                struct device_attribute *attr, char *buf)
+{
+        u8 rdata;
+        if (ec_read(MSI_EC_BATTERY_CHARGE_CONTROL_ADDRESS, &rdata) < 0)
+                return -EIO;
+        return sysfs_emit(buf, "%i\n", rdata - MSI_EC_BATTERY_OFFSET_END);
+}
+
+static ssize_t charge_control_end_threshold_store(struct device *dev,
+                                                 struct device_attribute *attr,
+                                                 const char *buf, size_t count)
+{
+        u8 val;
+        if (kstrtou8(buf, 10, &val) < 0)
+                return -EINVAL;
+        u16 wdata = (u16)val + MSI_EC_BATTERY_OFFSET_END;
+        if (wdata < MSI_EC_BATTERY_RANGE_MIN || wdata > MSI_EC_BATTERY_RANGE_MAX)
+                return -EINVAL;
+        if (ec_write(MSI_EC_BATTERY_CHARGE_CONTROL_ADDRESS, (u8)wdata) < 0)
+                return -EIO;
+        return count;
+}
+
+static DEVICE_ATTR_RW(charge_control_end_threshold);
+
+static struct attribute *msi_battery_attrs[] = {
+        &dev_attr_charge_control_end_threshold.attr,
+        NULL
+};
+ATTRIBUTE_GROUPS(msi_battery);
+
+static int msi_battery_add(struct power_supply *battery, struct acpi_battery_hook *hook) {
+        return device_add_groups(&battery->dev, msi_battery_groups);
+}
+static int msi_battery_remove(struct power_supply *battery, struct acpi_battery_hook *hook) {
+        device_remove_groups(&battery->dev, msi_battery_groups);
+        return 0;
+}
+static struct acpi_battery_hook msi_battery_hook = {
+        .add_battery = msi_battery_add,
+        .remove_battery = msi_battery_remove,
+        .name = MSI_DRIVER_NAME,
+};
+
+/* In msi_ec_init: */
+battery_hook_register(&msi_battery_hook);
+
+/* In msi_ec_exit: */
+battery_hook_unregister(&msi_battery_hook);
 ```
 
 ### 2.3. Build, Install, and Prioritize Module
