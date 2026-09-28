@@ -13,11 +13,13 @@ This guide documents the complete setup for CPU power capping, TuneD power profi
   * MSI EC Preset: Switched to **`super_battery`**.
   * MSI EC Fan Mode: Switched to **`silent`**.
   * Resulting Fan Speed: **0 RPM** (passive cooling below ~50°C, CPU runs at ~33°C).
+  * Wallpaper (`swaybg`): Switched to **solid black (`#000000`)** to conserve battery.
 * **On AC Power Behavior:**
   * CPU Maximum Performance Cap: Uncapped (**100%**).
   * TuneD Power Profile: Switched to **`throughput-performance`** (or `balanced`).
   * MSI EC Preset: Switched to **`balanced`**.
   * MSI EC Fan Mode: Switched to **`auto`** (firmware-managed thermal curve).
+  * Wallpaper (`swaybg`): Restores the dynamic **Bing daily wallpaper** via `bing-wallpaper.service`.
 
 ---
 
@@ -179,6 +181,9 @@ if [ "$1" == "bat" ]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+
+    # 4. Set swaybg to solid black on battery
+    update_sway_wallpaper "bat"
     
     update_tmux 300 "5m"
 
@@ -199,6 +204,9 @@ elif [ "$1" == "ac" ]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+
+    # 4. Call Bing wallpaper service on AC
+    update_sway_wallpaper "ac"
     
     update_tmux 2 "2s"
 fi

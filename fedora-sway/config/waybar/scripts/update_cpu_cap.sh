@@ -59,6 +59,8 @@ if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+    # Restore Bing wallpaper on AC
+    systemctl --user start bing-wallpaper.service 2>/dev/null || /home/pa3k/.config/sway/scripts/bing-wallpaper.sh 2>/dev/null || true
     echo "System is currently on AC power. Applied 100% (uncapped) CPU limit and 'throughput-performance' TuneD profile."
 else
     # Currently on Battery Mode -> switch to non-blocking profile (balanced or powersave) first, then apply user's desired cap
@@ -72,6 +74,8 @@ else
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+    # Set solid black wallpaper on battery
+    swaymsg "output * bg #000000 solid_color" 2>/dev/null || true
     echo "System is currently on Battery. Applied $VALUE% CPU cap and synchronized TuneD profile."
 fi
 

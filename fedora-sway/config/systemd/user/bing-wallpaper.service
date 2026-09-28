@@ -1,0 +1,11 @@
+[Unit]
+Description=Download and set Bing daily wallpaper
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/pa3k/.config/sway/scripts/bing-wallpaper.sh
+
+[Install]
+WantedBy=graphical-session.target

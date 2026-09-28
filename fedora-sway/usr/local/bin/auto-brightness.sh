@@ -26,6 +26,36 @@ update_tmux() {
     fi
 }
 
+# --- Sway Wallpaper Helper Function ---
+update_sway_wallpaper() {
+    local MODE=$1 # "bat" or "ac"
+    local USER_NAME="pa3k"
+    local UID_VAL=1000
+
+    # Locate active Sway socket
+    local SOCK
+    SOCK=$(ls -t /run/user/${UID_VAL}/sway-ipc.*.sock 2>/dev/null | head -n 1)
+
+    if [[ "$MODE" == "bat" ]]; then
+        # Update user session environment
+        sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" systemctl --user set-environment SWAY_ON_BATTERY=1 2>/dev/null || true
+        # Set swaybg to solid black color
+        if [[ -n "$SOCK" && -S "$SOCK" ]]; then
+            sudo -u "$USER_NAME" env SWAYSOCK="$SOCK" swaymsg "output * bg #000000 solid_color" >/dev/null 2>&1
+        fi
+    elif [[ "$MODE" == "ac" ]]; then
+        # Update user session environment
+        sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" systemctl --user unset-environment SWAY_ON_BATTERY 2>/dev/null || true
+        # Call the Bing wallpaper service (with script fallback)
+        if sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" systemctl --user is-active --quiet sway-session.service 2>/dev/null; then
+            sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" systemctl --user start bing-wallpaper.service >/dev/null 2>&1 || \
+            ( [[ -n "$SOCK" && -S "$SOCK" ]] && sudo -u "$USER_NAME" env SWAYSOCK="$SOCK" /home/${USER_NAME}/.config/sway/scripts/bing-wallpaper.sh >/dev/null 2>&1 )
+        elif [[ -n "$SOCK" && -S "$SOCK" ]]; then
+            sudo -u "$USER_NAME" env SWAYSOCK="$SOCK" /home/${USER_NAME}/.config/sway/scripts/bing-wallpaper.sh >/dev/null 2>&1
+        fi
+    fi
+}
+
 if [ "$1" == "bat" ]; then
     # Unplugged: dim the screen
     /usr/bin/brightnessctl set 1
@@ -47,6 +77,9 @@ if [ "$1" == "bat" ]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+
+    # Set wallpaper to solid black on battery
+    update_sway_wallpaper "bat"
     
     # Update tmux to ultra battery-saving mode (5 minutes)
     update_tmux 300 "5m"
@@ -67,6 +100,9 @@ elif [ "$1" == "ac" ]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
+
+    # Restore Bing wallpaper service on AC
+    update_sway_wallpaper "ac"
     
     # Update tmux to performance mode (2 seconds)
     update_tmux 2 "2s"
