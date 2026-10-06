@@ -250,6 +250,9 @@ if [ "$1" == "bat" ]; then
     
     update_tmux 300 "5m"
 
+    # 5. Notify on power source change
+    send_power_notification "bat"
+
 elif [ "$1" == "ac" ]; then
     # Screen brightening
     /usr/bin/brightnessctl set 30%
@@ -272,6 +275,9 @@ elif [ "$1" == "ac" ]; then
     update_sway_wallpaper "ac"
     
     update_tmux 2 "2s"
+
+    # 5. Notify on power source change
+    send_power_notification "ac"
 fi
 ```
 

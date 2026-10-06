@@ -56,6 +56,78 @@ update_sway_wallpaper() {
     fi
 }
 
+# --- Power Notification Helper Function ---
+send_power_notification() {
+    local MODE=$1 # "bat" or "ac"
+    local USER_NAME="${TMUX_USER:-pa3k}"
+    local UID_VAL=1000
+
+    if id -u "$USER_NAME" >/dev/null 2>&1; then
+        UID_VAL=$(id -u "$USER_NAME")
+    fi
+
+    local BATT_LEVEL="Unknown"
+    if [[ -f /sys/class/power_supply/BAT1/capacity ]]; then
+        read -r BATT_LEVEL < /sys/class/power_supply/BAT1/capacity 2>/dev/null
+    elif compgen -G "/sys/class/power_supply/BAT*/capacity" >/dev/null 2>&1; then
+        read -r BATT_LEVEL < /sys/class/power_supply/BAT*/capacity 2>/dev/null
+    fi
+
+    local TITLE=""
+    local BODY=""
+    local ICON=""
+
+    if [[ "$MODE" == "ac" ]]; then
+        local CHARGE_CAP="100"
+        if [[ -f /sys/class/power_supply/BAT1/charge_control_end_threshold ]]; then
+            read -r CHARGE_CAP < /sys/class/power_supply/BAT1/charge_control_end_threshold 2>/dev/null
+        elif [[ -f /etc/battery_charge_thresh.conf ]]; then
+            read -r CHARGE_CAP < /etc/battery_charge_thresh.conf 2>/dev/null
+        fi
+
+        TITLE="Power Connected (AC)"
+        BODY="Battery: ${BATT_LEVEL}%\nCharge Cap: ${CHARGE_CAP}%"
+        ICON="ac-adapter"
+
+    elif [[ "$MODE" == "bat" ]]; then
+        local CPU_CAP=""
+        if [[ -f "$PSTATE_FILE" ]]; then
+            read -r CPU_CAP < "$PSTATE_FILE" 2>/dev/null
+        elif [[ -f "$SAVED_CAP_FILE" ]]; then
+            read -r CPU_CAP < "$SAVED_CAP_FILE" 2>/dev/null
+        else
+            CPU_CAP="$BAT_CAP"
+        fi
+
+        # Power draw calculation from tmux-status-bar-stats.sh
+        local BATT_VOLT=""
+        local BATT_CURR=""
+        local POWER_DRAW="0W"
+        read -r BATT_VOLT < /sys/class/power_supply/BAT1/voltage_now 2>/dev/null
+        read -r BATT_CURR < /sys/class/power_supply/BAT1/current_now 2>/dev/null
+
+        if [[ -n "$BATT_VOLT" && -n "$BATT_CURR" && "$BATT_VOLT" -gt 0 && "$BATT_CURR" -gt 0 ]]; then
+            local POWER_UW=$(( (BATT_VOLT / 1000) * (BATT_CURR / 1000) ))
+            local POWER_W=$(( POWER_UW / 1000000 ))
+            local POWER_DEC=$(( (POWER_UW % 1000000) / 100000 ))
+            POWER_DRAW="${POWER_W}.${POWER_DEC}W"
+        fi
+
+        TITLE="Power Disconnected (Battery)"
+        BODY="Battery: ${BATT_LEVEL}%\nPower Consumption: ${POWER_DRAW}\nCPU Cap: ${CPU_CAP}%"
+        ICON="battery"
+    fi
+
+    local DBUS_BUS="/run/user/${UID_VAL}/bus"
+    if [[ -S "$DBUS_BUS" ]]; then
+        if [[ "$EUID" -eq 0 ]]; then
+            sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" DBUS_SESSION_BUS_ADDRESS="unix:path=${DBUS_BUS}" notify-send -a "Power Manager" -i "$ICON" -h string:x-canonical-private-synchronous:power_event "$TITLE" "$BODY" >/dev/null 2>&1 || true
+        else
+            env XDG_RUNTIME_DIR="/run/user/${UID_VAL}" DBUS_SESSION_BUS_ADDRESS="unix:path=${DBUS_BUS}" notify-send -a "Power Manager" -i "$ICON" -h string:x-canonical-private-synchronous:power_event "$TITLE" "$BODY" >/dev/null 2>&1 || true
+        fi
+    fi
+}
+
 if [ "$1" == "bat" ]; then
     # Unplugged: dim the screen
     /usr/bin/brightnessctl set 1
@@ -84,6 +156,9 @@ if [ "$1" == "bat" ]; then
     # Update tmux to ultra battery-saving mode (5 minutes)
     update_tmux 300 "5m"
 
+    # Notify on power source change
+    send_power_notification "bat"
+
 elif [ "$1" == "ac" ]; then
     # Plugged in: brighten the screen
     /usr/bin/brightnessctl set 30%
@@ -106,4 +181,7 @@ elif [ "$1" == "ac" ]; then
     
     # Update tmux to performance mode (2 seconds)
     update_tmux 2 "2s"
+
+    # Notify on power source change
+    send_power_notification "ac"
 fi
