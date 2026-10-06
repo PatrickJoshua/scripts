@@ -17,6 +17,7 @@ set $menu $rofi_cmd -show combi -combi-modes "window,drun,run,ssh,combi"
 
     # Kill focused window
     bindsym $mod+q kill
+    bindsym $mod+f fullscreen
 
     # Start your launcher
     bindsym $mod+d exec $menu
@@ -40,6 +41,9 @@ set $menu $rofi_cmd -show combi -combi-modes "window,drun,run,ssh,combi"
 
 # Others
 floating_modifier $mod normal
+
+# Hide title bar for windows named Google Chat
+for_window [title=".*Google Chat.*"] border none
 
 # Resize windows by holding $mod and scrolling (two-finger scroll on trackpad or scroll wheel) anywhere inside the window
 # - Vertical scroll (button4/button5) adjusts height

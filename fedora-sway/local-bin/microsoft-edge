@@ -1,8 +1,38 @@
 #!/bin/bash
+
+# --- Auto-cleanup stale ProcessSingleton lock files if Edge is dead ---
+PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/microsoft-edge"
+for arg in "$@"; do
+    case "$arg" in
+        --user-data-dir=*)
+            PROFILE_DIR="${arg#*=}"
+            ;;
+    esac
+done
+
+LOCK_FILE="$PROFILE_DIR/SingletonLock"
+if [ -L "$LOCK_FILE" ] || [ -e "$LOCK_FILE" ]; then
+    TARGET=$(readlink "$LOCK_FILE" 2>/dev/null || true)
+    PID="${TARGET##*-}"
+    IS_RUNNING=0
+
+    # Check if PID exists and belongs to a running Edge process
+    if [ -n "$PID" ] && [ -d "/proc/$PID" ]; then
+        if grep -qa "edge" "/proc/$PID/cmdline" 2>/dev/null; then
+            IS_RUNNING=1
+        fi
+    fi
+
+    # If the process is dead or PID was recycled by another program, clear the stale locks
+    if [ "$IS_RUNNING" -eq 0 ]; then
+        rm -f "$PROFILE_DIR"/SingletonLock "$PROFILE_DIR"/SingletonCookie "$PROFILE_DIR"/SingletonSocket
+    fi
+fi
+
 # 1. Native Wayland (Efficiency)
 # 2. Disable Vulkan (Stability)
 # 3. Enable VA-API (Battery-saving video)
-/usr/bin/microsoft-edge \
+exec /usr/bin/microsoft-edge \
   --enable-features=UseOzonePlatform,VaapiVideoDecoder,WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation,UseEcoQosForBackgroundProcess \
   --ozone-platform=wayland \
   --disable-features=WaylandFractionalScaleV1,Vulkan,VulkanFromANGLE,DefaultANGLEVulkan \
