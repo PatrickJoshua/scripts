@@ -57,6 +57,7 @@ if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then
     echo "100" > "$PSTATE_FILE"
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "45 58 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
     # Restore Bing wallpaper on AC
@@ -72,7 +73,8 @@ else
     echo "$VALUE" > "$PSTATE_FILE"
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
-        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
     fi
     # Set solid black wallpaper on battery
     swaymsg "output * bg #000000 solid_color" 2>/dev/null || true

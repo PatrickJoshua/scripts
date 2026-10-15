@@ -1,3 +1,27 @@
 #!/bin/bash
 
-notify-send "Battery" $(~/scripts/fedora-sway/check-battery.sh)
+# Ensure D-Bus session bus is found if run from bare environment
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+
+# Read battery percentage (zero fork sysfs read, fallback to check-battery.sh)
+if [[ -f /sys/class/power_supply/BAT1/capacity ]]; then
+    read -r BATT_LEVEL < /sys/class/power_supply/BAT1/capacity 2>/dev/null
+    BATT_LEVEL="${BATT_LEVEL}%"
+else
+    BATT_LEVEL=$(~/scripts/fedora-sway/check-battery.sh 2>/dev/null || echo "Unknown")
+fi
+
+# Calculate real-time power draw
+read -r BATT_VOLT < /sys/class/power_supply/BAT1/voltage_now 2>/dev/null
+read -r BATT_CURR < /sys/class/power_supply/BAT1/current_now 2>/dev/null
+
+if [[ -n "$BATT_VOLT" && -n "$BATT_CURR" && "$BATT_VOLT" -gt 0 && "$BATT_CURR" -gt 0 ]]; then
+    POWER_UW=$(( (BATT_VOLT / 1000) * (BATT_CURR / 1000) ))
+    POWER_W=$(( POWER_UW / 1000000 ))
+    POWER_DEC=$(( (POWER_UW % 1000000) / 100000 ))
+    POWER_DRAW="${POWER_W}.${POWER_DEC}W"
+else
+    POWER_DRAW="0W"
+fi
+
+notify-send -i battery -h string:x-canonical-private-synchronous:batt_check "Battery" "${BATT_LEVEL} (${POWER_DRAW})"

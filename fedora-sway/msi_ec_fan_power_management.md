@@ -11,14 +11,14 @@ This guide documents the complete setup for CPU power capping, TuneD power profi
   * CPU Maximum Performance Cap: Capped at **30%** via Intel P-State (`/sys/devices/system/cpu/intel_pstate/max_perf_pct`).
   * TuneD Power Profile: Switched to **`powersave`**.
   * MSI EC Preset: Switched to **`super_battery`**.
-  * MSI EC Fan Mode: Switched to **`silent`**.
-  * Resulting Fan Speed: **0 RPM** (passive cooling below ~50°C, CPU runs at ~33°C).
+  * MSI EC Fan Mode: Switched to **`advanced`** with fan curve `0 0 65 72 80 85 100` (`/sys/devices/platform/msi-ec/cpu/fan_speeds`).
+  * Resulting Fan Speed: **0 RPM** (true passive cooling below ~58°C, CPU runs at ~33–45°C).
   * Wallpaper (`swaybg`): Switched to **solid black (`#000000`)** to conserve battery.
 * **On AC Power Behavior:**
   * CPU Maximum Performance Cap: Uncapped (**100%**).
   * TuneD Power Profile: Switched to **`throughput-performance`** (or `balanced`).
   * MSI EC Preset: Switched to **`balanced`**.
-  * MSI EC Fan Mode: Switched to **`auto`** (firmware-managed thermal curve).
+  * MSI EC Fan Mode: Restores factory curve `45 58 65 72 80 85 100` and switches to **`auto`** (firmware-managed thermal curve).
   * Wallpaper (`swaybg`): Restores the dynamic **Bing daily wallpaper** via `bing-wallpaper.service`.
 
 ---
@@ -137,6 +137,20 @@ battery_hook_register(&msi_battery_hook);
 
 /* In msi_ec_exit: */
 battery_hook_unregister(&msi_battery_hook);
+
+/* Fan Curve Sysfs Attributes & Zero-RPM Control (/sys/devices/platform/msi-ec/cpu/) */
+#define MSI_EC_CPU_TEMP_BASE 0x6a
+#define MSI_EC_CPU_FAN_SPEED_BASE 0x72
+#define MSI_EC_FAN_POINTS 7
+
+/* Exposes cpu/fan_speeds (RW) and cpu/fan_temperatures (RW) to set custom fan curves */
+static ssize_t cpu_fan_speeds_show(struct device *device, struct device_attribute *attr, char *buf);
+static ssize_t cpu_fan_speeds_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t cpu_fan_temperatures_show(struct device *device, struct device_attribute *attr, char *buf);
+static ssize_t cpu_fan_temperatures_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+
+/* Inside preset_store(): Prevent power scenario switches from clobbering advanced fan mode */
+/* (Comment out the block resetting ADVANCED_BIT and BASIC_BIT when index != HIGH_PERFORMANCE) */
 ```
 
 ### 2.3. Build, Install, and Prioritize Module
@@ -173,8 +187,10 @@ ls -la /sys/devices/platform/msi-ec/
 Key control files in `/sys/devices/platform/msi-ec/`:
 * `preset`: Accepts `super_battery`, `silent`, `balanced`, `high_performance`.
 * `fan_mode`: Accepts `silent`, `auto`, `advanced`.
-* `cpu/realtime_fan_speed`: Current fan speed register reading.
-* `cpu/realtime_temperature`: Realtime CPU temperature from EC.
+* `cpu/fan_speeds`: 7 space-separated speed percentages (`45 58 65 72 80 85 100`). Setting lower points to 0 (`0 0 65 72 80 85 100`) achieves true 0-RPM passive cooling in `advanced` mode.
+* `cpu/fan_temperatures`: 7 temperature trip points in °C (`50 58 65 70 90 95 100`).
+* `cpu/realtime_fan_speed`: Current fan speed register percentage (0–100%).
+* `cpu/realtime_temperature`: Realtime CPU temperature from EC (°C).
 
 ---
 
@@ -239,10 +255,11 @@ if [ "$1" == "bat" ]; then
         echo "$BAT_CAP" > "$PSTATE_FILE"
     fi
 
-    # 3. Set MSI EC to super_battery + silent fan mode (0 RPM)
+    # 3. Set MSI EC to super_battery + advanced mode with 0-RPM fan curve
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
-        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
     fi
 
     # 4. Set swaybg to solid black on battery
@@ -265,9 +282,10 @@ elif [ "$1" == "ac" ]; then
         echo "100" > "$PSTATE_FILE"
     fi
 
-    # 3. Restore MSI EC to balanced + auto fan curve
+    # 3. Restore MSI EC to balanced + auto fan curve (factory speeds)
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "45 58 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
 
@@ -292,6 +310,7 @@ if grep -q "1" /sys/class/power_supply/*/online 2>/dev/null; then
     echo "100" > "$PSTATE_FILE"
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "45 58 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
 else
@@ -303,7 +322,8 @@ else
     echo "$VALUE" > "$PSTATE_FILE"
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
-        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
     fi
 fi
 ```

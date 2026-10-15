@@ -144,10 +144,11 @@ if [ "$1" == "bat" ]; then
         echo "$BAT_CAP" > "$PSTATE_FILE"
     fi
 
-    # Set MSI EC fan profile to silent / super_battery for quiet / 0-RPM operation
+    # Set MSI EC fan profile to super_battery + advanced mode with 0-RPM curve for passive cooling
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
-        echo "silent" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
+        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
     fi
 
     # Set wallpaper to solid black on battery
@@ -170,9 +171,10 @@ elif [ "$1" == "ac" ]; then
     # Switch TuneD profile to high performance on AC
     tuned-adm profile throughput-performance 2>/dev/null || tuned-adm profile balanced
 
-    # Restore MSI EC fan profile to balanced / auto
+    # Restore MSI EC fan profile to balanced / auto and restore factory fan curve
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "balanced" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
+        echo "45 58 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
         echo "auto" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
     fi
 
