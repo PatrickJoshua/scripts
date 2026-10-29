@@ -24,4 +24,5 @@ else
     POWER_DRAW="0W"
 fi
 
-notify-send -i battery -h string:x-canonical-private-synchronous:batt_check "Battery" "${BATT_LEVEL} (${POWER_DRAW})"
+echo "Battery" "${BATT_LEVEL} (${POWER_DRAW})"
+notify-send -i battery -h string:x-canonical-private-synchronous:batt_check "Battery" "${BATT_LEVEL} (${POWER_DRAW})" 2>/dev/null

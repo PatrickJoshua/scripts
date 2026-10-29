@@ -11,8 +11,8 @@ This guide documents the complete setup for CPU power capping, TuneD power profi
   * CPU Maximum Performance Cap: Capped at **30%** via Intel P-State (`/sys/devices/system/cpu/intel_pstate/max_perf_pct`).
   * TuneD Power Profile: Switched to **`powersave`**.
   * MSI EC Preset: Switched to **`super_battery`**.
-  * MSI EC Fan Mode: Switched to **`advanced`** with fan curve `0 0 65 72 80 85 100` (`/sys/devices/platform/msi-ec/cpu/fan_speeds`).
-  * Resulting Fan Speed: **0 RPM** (true passive cooling below ~58°C, CPU runs at ~33–45°C).
+  * MSI EC Fan Mode: Switched to **`advanced`** with fan curve `0 0 28 50 75 88 100` at temperatures `55 65 70 80 90 95 100` (`cpu/` and `gpu/` fan speeds and temperatures).
+  * Resulting Fan Speed: **0 RPM** (true passive cooling below 65°C, CPU runs at ~33–45°C).
   * Wallpaper (`swaybg`): Switched to **solid black (`#000000`)** to conserve battery.
 * **On AC Power Behavior:**
   * CPU Maximum Performance Cap: Uncapped (**100%**).
@@ -187,10 +187,10 @@ ls -la /sys/devices/platform/msi-ec/
 Key control files in `/sys/devices/platform/msi-ec/`:
 * `preset`: Accepts `super_battery`, `silent`, `balanced`, `high_performance`.
 * `fan_mode`: Accepts `silent`, `auto`, `advanced`.
-* `cpu/fan_speeds`: 7 space-separated speed percentages (`45 58 65 72 80 85 100`). Setting lower points to 0 (`0 0 65 72 80 85 100`) achieves true 0-RPM passive cooling in `advanced` mode.
-* `cpu/fan_temperatures`: 7 temperature trip points in °C (`50 58 65 70 90 95 100`).
-* `cpu/realtime_fan_speed`: Current fan speed register percentage (0–100%).
-* `cpu/realtime_temperature`: Realtime CPU temperature from EC (°C).
+* `cpu/fan_speeds` & `gpu/fan_speeds`: 7 space-separated speed percentages. Setting lower points to 0 (`0 0 28 50 75 88 100`) achieves true 0-RPM passive cooling in `advanced` mode.
+* `cpu/fan_temperatures` & `gpu/fan_temperatures`: 7 temperature trip points in °C (`55 65 70 80 90 95 100` on battery, factory curves restored on AC).
+* `cpu/realtime_fan_speed` & `gpu/realtime_fan_speed`: Current fan speed register percentage (0–100%).
+* `cpu/realtime_temperature` & `gpu/realtime_temperature`: Realtime temperatures from EC (°C).
 
 ---
 
@@ -259,7 +259,10 @@ if [ "$1" == "bat" ]; then
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
-        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
+        echo "55 65 70 80 90 95 100" > /sys/devices/platform/msi-ec/cpu/fan_temperatures 2>/dev/null || true
+        echo "0 0 28 50 75 88 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
+        echo "55 65 70 80 90 95 100" > /sys/devices/platform/msi-ec/gpu/fan_temperatures 2>/dev/null || true
+        echo "0 0 28 50 75 88 100" > /sys/devices/platform/msi-ec/gpu/fan_speeds 2>/dev/null || true
     fi
 
     # 4. Set swaybg to solid black on battery
@@ -323,7 +326,10 @@ else
     if [[ -d "/sys/devices/platform/msi-ec" ]]; then
         echo "super_battery" > /sys/devices/platform/msi-ec/preset 2>/dev/null || true
         echo "advanced" > /sys/devices/platform/msi-ec/fan_mode 2>/dev/null || true
-        echo "0 0 65 72 80 85 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
+        echo "55 65 70 80 90 95 100" > /sys/devices/platform/msi-ec/cpu/fan_temperatures 2>/dev/null || true
+        echo "0 0 28 50 75 88 100" > /sys/devices/platform/msi-ec/cpu/fan_speeds 2>/dev/null || true
+        echo "55 65 70 80 90 95 100" > /sys/devices/platform/msi-ec/gpu/fan_temperatures 2>/dev/null || true
+        echo "0 0 28 50 75 88 100" > /sys/devices/platform/msi-ec/gpu/fan_speeds 2>/dev/null || true
     fi
 fi
 ```
