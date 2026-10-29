@@ -21,7 +21,7 @@ update_tmux() {
     # Only attempt to update if pa3k has an active tmux session
     if sudo -u "$TMUX_USER" tmux has-session 2>/dev/null; then
         sudo -u "$TMUX_USER" tmux set -g status-interval "$INTERVAL"
-        sudo -u "$TMUX_USER" tmux set -g status-right " $LABEL #{?#{==:#{client_termname},linux},#(~/scripts/fedora-sway/tmux/tmux-status-bar-stats.sh tty),#(~/scripts/fedora-sway/tmux/tmux-status-bar-stats.sh)} %m/%d %H:%M"
+        sudo -u "$TMUX_USER" tmux set -g status-right " $LABEL #{?#{==:#{client_termname},linux},#(~/scripts/fedora-sway/tmux/tmux-status-bar-stats.sh tty #{client_width}),#(~/scripts/fedora-sway/tmux/tmux-status-bar-stats.sh default #{client_width})} %m/%d %H:%M"
         #sudo -u "$TMUX_USER" tmux refresh-client -S
     fi
 }
