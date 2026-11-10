@@ -25,4 +25,17 @@ else
 fi
 
 echo "Battery" "${BATT_LEVEL} (${POWER_DRAW})"
-notify-send -i battery -h string:x-canonical-private-synchronous:batt_check "Battery" "${BATT_LEVEL} (${POWER_DRAW})" 2>/dev/null
+
+# Get fan speed info if script exists
+FAN_INFO=""
+if [[ -x "$HOME/scripts/fedora-sway/check-fan-speed.sh" ]]; then
+    FAN_INFO=$("$HOME/scripts/fedora-sway/check-fan-speed.sh" 2>/dev/null)
+fi
+
+NOTIF_BODY="${BATT_LEVEL} (${POWER_DRAW})"
+if [[ -n "$FAN_INFO" ]]; then
+    NOTIF_BODY="${NOTIF_BODY}
+${FAN_INFO}"
+fi
+
+notify-send -i battery -h string:x-canonical-private-synchronous:batt_check "Battery" "$NOTIF_BODY" 2>/dev/null
