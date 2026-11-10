@@ -360,3 +360,48 @@ tuned-adm active
 # 6. Waybar Power Status JSON Output
 ~/scripts/fedora-sway/config/waybar/scripts/power_status.sh
 ```
+
+---
+
+## 6. Troubleshooting & Kernel Updates
+
+### 6.1. Symptom: Fans Spin at Low Temperature on Battery After Kernel Update
+
+If cooling fans spin while on battery power even at low temperatures (< 60°C), check whether `/sys/devices/platform/msi-ec` exists:
+
+```bash
+ls -ld /sys/devices/platform/msi-ec
+```
+
+If it returns `No such file or directory`, a kernel upgrade has occurred and booted into a newer kernel without the patched out-of-tree module in `/lib/modules/$(uname -r)/extra/`. The system falls back to the upstream in-tree `msi_ec` driver (which lacks custom fan curve sysfs controls), causing power scripts (`auto-brightness.sh`, `update_cpu_cap.sh`) to silently bypass curve configuration.
+
+### 6.2. Recovery Steps
+
+1. Rebuild and install the module for the newly booted kernel:
+   ```bash
+   cd /usr/src/msi-ec-modern
+   sudo make clean
+   sudo make
+   sudo make install
+   ```
+
+2. Unload the in-tree module and load the newly compiled extra module:
+   ```bash
+   sudo rmmod msi_ec 2>/dev/null || sudo modprobe -r msi_ec
+   sudo modprobe -v msi-ec
+   ```
+
+3. Re-trigger the battery power profile:
+   ```bash
+   sudo /usr/local/bin/auto-brightness.sh bat
+   ```
+
+4. Verify zero-RPM operation:
+   ```bash
+   cat /sys/devices/platform/msi-ec/fan_mode           # Expected: advanced
+   cat /sys/devices/platform/msi-ec/cpu/fan_speeds     # Expected: 0 0 28 50 75 88 100
+   cat /sys/class/hwmon/hwmon4/fan1_input              # Expected: 0
+   ```
+
+*(Note: To automate rebuilds on future kernel updates, install DKMS via `sudo dnf install dkms` and run `sudo make dkms-install` inside `/usr/src/msi-ec-modern`).*
+
